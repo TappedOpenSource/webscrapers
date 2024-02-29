@@ -7,27 +7,25 @@ import {
   saveScrapeResult,
   startScrapeRun,
 } from "../../utils/database";
-import { metadata } from "./config";
 import {
   notifyOnScrapeFailure,
   notifyOnScrapeSuccess,
 } from "../../utils/notifications";
 import {
-  getEventNameFromUrl,
-  getTitle,
-  getDescription,
   getArtists,
-  getTimes,
+  getEventDescription,
+  getEventNameFromUrl,
+  getEventTitle,
   getFlierUrl,
+  parsePage,
+  parseTimes,
+  // parseArtists,
+  // parseTicketPrice,
+  // parseTimes,
 } from "./parsing";
+import { metadata } from "./config";
 import { configDotenv } from "dotenv";
 import { v4 as uuidv4 } from "uuid";
-
-function getUnixTimestampForYesterday() {
-  const now = new Date();
-  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  return Math.floor(yesterday.getTime() / 1000);
-}
 
 async function scrapeEvent(
   browser: Browser,
@@ -41,32 +39,19 @@ async function scrapeEvent(
   }
 
   console.log("[+] scraping event:", eventName);
-
   const page = await browser.newPage();
-
-  // Navigate the page to a URL
   await page.goto(eventUrl);
-
-  // Set screen size
   await page.setViewport({ width: 1080, height: 1024 });
 
-  const title = (await getTitle(page)) ?? "";
+  const id = uuidv4();
+  const flierUrl = await getFlierUrl(page);
+  const { isMusicEvent, title, description, startTime, endTime, artists } =
+    await parsePage(page);
 
-  const description = (await getDescription(page)) ?? "";
-
-  const eventTimes = await getTimes(page);
-  if (!eventTimes) {
-    console.log("[-] start date not found");
+  if (!isMusicEvent) {
+    console.log("[-] not a music event");
     return null;
   }
-
-  const { startTime, endTime } = eventTimes;
-
-  const artists = await getArtists(title, description);
-
-  const flierUrl = await getFlierUrl(page);
-
-  const id = uuidv4();
 
   return {
     id,
@@ -82,13 +67,14 @@ async function scrapeEvent(
 }
 
 export async function scrape({ online }: { online: boolean }): Promise<void> {
-  console.log(`[+] scraping ember music hall [online: ${online}]`);
+  console.log(`[+] scraping [online: ${online}]`);
   const latestRun = await getLatestRun(metadata);
   const runId = online ? await startScrapeRun(metadata) : "test-run";
 
   try {
     const lateRunStart = latestRun?.startTime ?? null;
     const lastmod = lateRunStart?.getTime();
+    console.log(`[+] last mode is ${lastmod}`);
     const sitemap = new Sitemapper({
       url: metadata.sitemap,
       lastmod,
@@ -98,22 +84,20 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
 
     const { sites } = await sitemap.fetch();
 
-    console.log("[+] ember music hall urls:", sites.length);
+    console.log("[+] urls:", sites.length);
 
     // Launch the browser and open a new blank page
     const browser = await puppeteer.launch({
       headless: "new",
     });
 
-    for (const emberUrl of sites) {
+    for (const url of sites) {
       try {
-        const data = await scrapeEvent(browser, emberUrl);
+        const data = await scrapeEvent(browser, url);
         if (data === null) {
           console.log("[-] failed to scrape data");
           continue;
         }
-
-        console.log({ data });
 
         // console.log(`[+] scraped data: ${data.title} - #${data.artists.join('|')}# [${data.startTime.toLocaleString()} - ${data.endTime.toLocaleString()}]`);
         if (online) {
@@ -135,8 +119,8 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
     }
   } catch (err: any) {
     console.log("[-] error:", err);
+    await endScrapeRun(metadata, runId, { error: err.message });
     if (online) {
-      await endScrapeRun(metadata, runId, { error: null });
       await notifyOnScrapeFailure({
         error: err.message,
       });

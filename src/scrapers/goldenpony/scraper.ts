@@ -206,15 +206,11 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
 
   try {
     const lateRunStart = latestRun?.startTime ?? null;
-    const lastmod =
-      lateRunStart !== null
-        ? lateRunStart.getTime()
-        : getUnixTimestampForYesterday() * 1000;
+    const lastmod = lateRunStart?.getTime();
 
     const sitemap = new Sitemapper({
       url: metadata.sitemap,
-      //lastmod,
-      lastmod: new Date("2023-01-01").getTime(),
+      lastmod,
       timeout: 30000,
     });
 

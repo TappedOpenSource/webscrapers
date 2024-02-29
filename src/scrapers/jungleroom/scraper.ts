@@ -20,6 +20,7 @@ import {
 import { metadata } from "./config";
 import { configDotenv } from "dotenv";
 import { v4 as uuidv4 } from "uuid";
+import { getTextContent } from "../../utils/text_content";
 
 function getUnixTimestampForYesterday() {
   const now = new Date();
@@ -67,29 +68,7 @@ async function scrapeEvent(
   ).trim();
 
   // Use evaluate to capture text content
-  const description = await page.evaluate(() => {
-    function getTextContent(element: Element | ChildNode) {
-      let text = "";
-
-      // Iterate over child nodes
-      element.childNodes.forEach((node) => {
-        if (node.nodeType === Node.TEXT_NODE) {
-          text += ` ${node.textContent} `;
-        } else if (node.nodeType === Node.ELEMENT_NODE) {
-          text += ` ${getTextContent(node)} `;
-        }
-      });
-
-      return text;
-    }
-
-    const container = document.querySelector(".eventitem-column-content");
-
-    if (!container) {
-      return "";
-    }
-    return getTextContent(container).trim();
-  });
+  const description = await getTextContent(page, ".eventitem-column-content");
 
   const ticketPrice = parseTicketPrice(description) ?? 5;
 
@@ -175,10 +154,7 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
 
   try {
     const lateRunStart = latestRun?.startTime ?? null;
-    const lastmod =
-      lateRunStart !== null
-        ? lateRunStart.getTime()
-        : getUnixTimestampForYesterday() * 1000;
+    const lastmod = lateRunStart?.getTime();
     const sitemap = new Sitemapper({
       url: metadata.sitemap,
       lastmod,
