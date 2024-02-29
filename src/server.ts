@@ -40,10 +40,17 @@ fastify.get("/latest", async function handler(request, reply) {
 
 export async function startServer() {
   try {
-    schedule.scheduleJob("0 0 * * *", async () => {
-      console.log("running scraper");
-      // await scrape();
-    });
+    let offset = 0;
+    for (const scraper of scrapers) {
+      schedule.scheduleJob(`0 ${offset} * * *`, async () => {
+        try {
+          await scraper.run({ online: true });
+        } catch (err) {
+          fastify.log.error(err);
+        }
+      });
+      offset++;
+    }
 
     await fastify.listen({
       host,

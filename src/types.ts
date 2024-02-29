@@ -18,7 +18,7 @@ export type ScraperMetadata = {
 };
 
 export type Scraper = {
-  scrape: ({ online }: { online: boolean }) => Promise<void>;
+  run: ({ online }: { online: boolean }) => Promise<void>;
   metadata: ScraperMetadata;
 };
 
