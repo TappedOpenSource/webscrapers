@@ -21,9 +21,6 @@ const storage = getStorage(app);
 
 export const projectId = app.options.projectId;
 
-export const isOnline = ["true", "TRUE"].includes(
-  process.env["ONLINE"] ?? "false",
-);
 export const openaiApiKey = process.env["OPENAI_API_KEY"] ?? "";
 
 export { auth, db, fcm, storage };
