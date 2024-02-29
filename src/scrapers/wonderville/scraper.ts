@@ -37,11 +37,6 @@ async function scrapeEvent(
   const { isMusicEvent, title, description, startTime, endTime, artists } =
     await parsePage(page);
 
-  console.log({
-    title,
-    flierUrl,
-  });
-
   if (!isMusicEvent) {
     console.log("[-] not a music event");
     return null;
@@ -73,7 +68,7 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
     const sitemap = new Sitemapper({
       url: metadata.sitemap,
       lastmod,
-      // lastmod: (new Date('2024-02-01')).getTime(),
+      // lastmod: new Date("2024-02-01").getTime(),
       timeout: 30000,
     });
 
