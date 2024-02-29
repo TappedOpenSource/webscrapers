@@ -22,12 +22,6 @@ import { configDotenv } from "dotenv";
 import { v4 as uuidv4 } from "uuid";
 import { getTextContent } from "../../utils/text_content";
 
-function getUnixTimestampForYesterday() {
-  const now = new Date();
-  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  return Math.floor(yesterday.getTime() / 1000);
-}
-
 async function scrapeEvent(
   browser: Browser,
   eventUrl: string,
