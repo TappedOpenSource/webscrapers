@@ -49,22 +49,16 @@ export async function parsePage(page: Page) {
     endTime,
   } = await extractItemsFromPage(pageContent);
 
-  console.log({
-    isMusicEvent,
-    artistNames,
-    eventTitle,
-    eventDescription,
-    startTime,
-    endTime,
-  });
+  const startDate = new Date(startTime);
+  const endDate = new Date(endTime);
 
   return {
-    isMusicEvent: true,
-    title: "",
-    description: "",
-    artists: [],
-    startTime: new Date(),
-    endTime: new Date(),
+    isMusicEvent,
+    title: eventTitle,
+    description: eventDescription,
+    artists: artistNames,
+    startTime: startDate,
+    endTime: endDate,
   };
 }
 
@@ -148,10 +142,10 @@ async function extractItemsFromPage(pageContent: string) {
   const artistNames = res.artistNames ?? [];
   return {
     artistNames,
-    startTime: res.startTime,
-    endTime: res.endTime,
-    eventTitle: res.eventTitle,
-    eventDescription: res.eventDescription,
-    isMusicEvent: res.isMusicEvent,
+    startTime: res.startTime ?? new Date(),
+    endTime: res.endTime ?? new Date(),
+    eventTitle: res.eventTitle ?? "",
+    eventDescription: res.eventDescription ?? "",
+    isMusicEvent: res.isMusicEvent ?? false,
   };
 }

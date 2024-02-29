@@ -37,6 +37,11 @@ async function scrapeEvent(
   const { isMusicEvent, title, description, startTime, endTime, artists } =
     await parsePage(page);
 
+  console.log({
+    title,
+    flierUrl,
+  });
+
   if (!isMusicEvent) {
     console.log("[-] not a music event");
     return null;
