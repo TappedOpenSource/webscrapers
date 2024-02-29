@@ -42,6 +42,9 @@ export async function startServer() {
   try {
     let offset = 0;
     for (const scraper of scrapers) {
+      fastify.log.info(
+        `scheduling ${scraper.metadata.name} to ${offset} past midnight`,
+      );
       schedule.scheduleJob(`0 ${offset} * * *`, async () => {
         try {
           await scraper.run({ online: true });

@@ -1,9 +1,9 @@
-import { Scraper } from "@/types";
+import { Scraper } from "../../types";
 import { scrape } from "./scraper";
 import { metadata } from "./config";
 
 const scraper: Scraper = {
-  scrape,
+  run: scrape,
   metadata,
 };
 

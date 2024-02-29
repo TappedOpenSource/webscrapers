@@ -3,7 +3,7 @@ import { scrape } from "./scraper";
 import { metadata } from "./config";
 
 const scraper: Scraper = {
-  scrape,
+  run: scrape,
   metadata,
 };
 

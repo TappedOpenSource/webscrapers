@@ -1,4 +1,4 @@
-import { storage } from "@/firebase";
+import { storage } from "../firebase";
 
 export async function uploadImageToFirebase(
   imageData: Buffer,

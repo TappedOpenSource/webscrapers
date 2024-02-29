@@ -1,16 +1,15 @@
 import { Timestamp } from "firebase-admin/firestore";
 import { v4 as uuidv4 } from "uuid";
 import type {
-  Scraper,
   Booking,
   ScrapedEventData,
   RunData,
   ScraperMetadata,
   Location,
-} from "@/types";
+} from "../types";
 import { auth, db } from "../firebase";
-import { sanitizeUsername } from "@/utils/sanitize";
-import { chatGpt } from "@/utils/ai";
+import { sanitizeUsername } from "../utils/sanitize";
+import { chatGpt } from "../utils/ai";
 
 export const usersRef = db.collection("users");
 export const bookingsRef = db.collection("bookings");

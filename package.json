@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "scrape": "npm run build && node dist/scraper.js",
+    "scrape": "npm run build && node dist/index.js",
     "dev": "nodemon --watch 'src/**/*.ts' src/server.ts",
     "start": "node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -21,6 +21,7 @@
     "firebase": "^10.7.1",
     "firebase-admin": "^12.0.0",
     "langchain": "^0.1.2",
+    "module-alias": "^2.2.3",
     "node-schedule": "^2.1.1",
     "puppeteer": "^21.7.0",
     "sitemapper": "^3.2.8",

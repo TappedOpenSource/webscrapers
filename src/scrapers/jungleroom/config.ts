@@ -1,4 +1,4 @@
-import type { ScraperMetadata } from "@/types";
+import type { ScraperMetadata } from "../../types";
 
 export const metadata: ScraperMetadata = {
   id: "DGeZx8VvolPscUOJzFX8cfgE3Rr2",

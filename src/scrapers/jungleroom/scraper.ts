@@ -1,16 +1,16 @@
 import puppeteer, { type Browser } from "puppeteer";
 import Sitemapper from "sitemapper";
-import { ScrapedEventData } from "@/types";
+import { ScrapedEventData } from "../../types";
 import {
   endScrapeRun,
   getLatestRun,
   saveScrapeResult,
   startScrapeRun,
-} from "@/utils/database";
+} from "../../utils/database";
 import {
   notifyOnScrapeFailure,
   notifyOnScrapeSuccess,
-} from "@/utils/notifications";
+} from "../../utils/notifications";
 import {
   getEventNameFromUrl,
   parseArtists,

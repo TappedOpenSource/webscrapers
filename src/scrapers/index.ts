@@ -1,5 +1,5 @@
 // import all scrapers
-import type { Scraper } from "@/types";
+import type { Scraper } from "../types";
 import JungleRoomScraper from "./jungleroom";
 import GoldenPony from "./goldenpony";
 import EmberScraper from "./ember";
