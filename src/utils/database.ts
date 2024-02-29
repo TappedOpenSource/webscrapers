@@ -81,7 +81,9 @@ export async function saveScrapeResult(
       ...data,
     });
 
-  await createBookingsFromEvent(scraper, runId, data);
+  if (data.isMusicEvent) {
+    await createBookingsFromEvent(scraper, runId, data);
+  }
 
   return;
 }

@@ -11,18 +11,7 @@ import {
   notifyOnScrapeFailure,
   notifyOnScrapeSuccess,
 } from "../../utils/notifications";
-import {
-  getArtists,
-  getEventDescription,
-  getEventNameFromUrl,
-  getEventTitle,
-  getFlierUrl,
-  parsePage,
-  parseTimes,
-  // parseArtists,
-  // parseTicketPrice,
-  // parseTimes,
-} from "./parsing";
+import { getEventNameFromUrl, getFlierUrl, parsePage } from "./parsing";
 import { metadata } from "./config";
 import { configDotenv } from "dotenv";
 import { v4 as uuidv4 } from "uuid";
@@ -63,6 +52,7 @@ async function scrapeEvent(
     startTime,
     endTime,
     flierUrl,
+    isMusicEvent,
   };
 }
 

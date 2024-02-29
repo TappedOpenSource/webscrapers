@@ -24,6 +24,7 @@ export type Scraper = {
 
 export type ScrapedEventData = {
   id: string;
+  isMusicEvent: boolean;
   url: string;
   title: string;
   description: string;

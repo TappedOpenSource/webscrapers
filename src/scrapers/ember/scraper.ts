@@ -70,6 +70,7 @@ async function scrapeEvent(
 
   return {
     id,
+    isMusicEvent: true,
     url: eventUrl,
     title,
     description,
