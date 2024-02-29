@@ -5,7 +5,9 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "scrape": "npm run build && node dist/index.js",
+    "scrape:jungleroom": "npm run build && node dist/scrapers/jungleroom/scraper.js",
+    "scrape:goldenpony": "npm run build && node dist/scrapers/goldenpony/scraper.js",
+    "scrape:ember": "npm run build && node dist/scrapers/ember/scraper.js",
     "dev": "nodemon --watch 'src/**/*.ts' src/server.ts",
     "start": "node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
