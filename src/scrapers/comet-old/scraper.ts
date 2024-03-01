@@ -4,120 +4,31 @@ import Sitemapper from "sitemapper";
 import { metadata } from "./config";
 import { ScrapedEventData } from "../../types";
 import { v4 as uuidv4 } from "uuid";
-
-async function getArtists(page: Page): Promise<string[]> {
-  try {
-    // Use evaluate to capture text content
-    const artists = await page.evaluate(() => {
-      function getTextContent(element: Element | ChildNode): string {
-        let text = "";
-
-        // Iterate over child nodes
-        element.childNodes.forEach((node) => {
-          if (node.nodeType === Node.TEXT_NODE) {
-            text += ` ${node.textContent} `;
-          } else if (node.nodeType === Node.ELEMENT_NODE) {
-            text += ` ${getTextContent(node)} `;
-          }
-        });
-
-        return text;
-      }
-
-      const container = document.querySelector(".eventitem-title");
-      if (!container) {
-        return [];
-      }
-      const titleText = getTextContent(container).trim();
-
-      return titleText.split(",").map((item) => item.trim());
-    });
-
-    return artists;
-  } catch (e) {
-    console.error(`[!!!] something broke, ${e}`);
-    return [];
-  }
-}
-
-async function getDate(page: Page): Promise<string[]> {
-  try {
-    // Use evaluate to capture text content
-    const date = await page.evaluate(() => {
-      function getTextContent(element: Element | ChildNode): string {
-        let text = "";
-
-        // Iterate over child nodes
-        element.childNodes.forEach((node) => {
-          if (node.nodeType === Node.TEXT_NODE) {
-            text += ` ${node.textContent} `;
-          } else if (node.nodeType === Node.ELEMENT_NODE) {
-            text += ` ${getTextContent(node)} `;
-          }
-        });
-
-        return text;
-      }
-
-      const container = document.querySelector(".event-date");
-
-      if (!container) {
-        return [];
-      }
-      const titleText = getTextContent(container).trim();
-
-      return titleText.split(",").map((item) => item.trim());
-    });
-
-    return date;
-  } catch (e) {
-    console.error(`[!!!] something broke, ${e}`);
-    return [];
-  }
-}
-
-async function getTime(page: Page): Promise<string[]> {
-  try {
-    // Use evaluate to capture text content
-    const time = await page.evaluate(() => {
-      function getTextContent(element: Element | ChildNode): string {
-        let text = "";
-
-        // Iterate over child nodes
-        element.childNodes.forEach((node) => {
-          if (node.nodeType === Node.TEXT_NODE) {
-            text += ` ${node.textContent} `;
-          } else if (node.nodeType === Node.ELEMENT_NODE) {
-            text += ` ${getTextContent(node)} `;
-          }
-        });
-
-        return text;
-      }
-
-      const container = document.querySelector(".event-time-12hr-start");
-
-      if (!container) {
-        return [];
-      }
-      const titleText = getTextContent(container).trim();
-
-      return titleText.split(",").map((item) => item.trim());
-    });
-
-    return time;
-  } catch (e) {
-    console.error(`[!!!] something broke, ${e}`);
-    return [];
-  }
-}
+import {
+  endScrapeRun,
+  getLatestRun,
+  saveScrapeResult,
+  startScrapeRun,
+} from "../../utils/database";
+import {
+  notifyOnScrapeFailure,
+  notifyOnScrapeSuccess,
+} from "../../utils/notifications";
+import { configDotenv } from "dotenv";
+import { getArtists, getDate, getEventNameFromUrl, getTime } from "./parsing";
 
 async function scrapeEvent(
-  url: string,
   browser: Browser,
-): Promise<ScrapedEventData> {
+  url: string,
+): Promise<ScrapedEventData | null> {
   const page = await browser.newPage();
   await page.goto(url);
+
+  const suffix = getEventNameFromUrl(url);
+  if (suffix === null) {
+    console.log("[-] failed to get event name from url");
+    return null;
+  }
 
   const eventArtists: string[] = await getArtists(page);
   const eventDate: string[] = await getDate(page);
@@ -128,14 +39,6 @@ async function scrapeEvent(
   const combinedTime: string = eventTime[0];
   const dateTimeString: string = `${combinedDate} ${combinedTime}`;
   const dateTime: Date = new Date(dateTimeString);
-
-  console.log({
-    dateTime,
-    eventDate,
-    eventTime,
-    url,
-    eventArtists,
-  });
 
   const id = uuidv4();
 
@@ -153,23 +56,71 @@ async function scrapeEvent(
   };
 }
 
-async function scrape() {
-  const sitemap = new Sitemapper({
-    url: metadata.sitemap,
-  });
-  const browser = await puppeteer.launch();
-  const response = await sitemap.fetch();
-  const { sites } = response;
+export async function scrape({ online }: { online: boolean }): Promise<void> {
+  console.log(`[+] scraping [online: ${online}]`);
+  const latestRun = await getLatestRun(metadata);
+  const runId = online ? await startScrapeRun(metadata) : "test-run";
 
-  const filteredSites = sites.filter((site) =>
-    site.includes("live-music-calendar"),
-  );
+  try {
+    const lateRunStart = latestRun?.startTime ?? null;
+    const lastmod = lateRunStart?.getTime();
+    const sitemap = new Sitemapper({
+      url: metadata.sitemap,
+      lastmod,
+      // lastmod: (new Date('2024-02-01')).getTime(),
+      timeout: 30000,
+    });
 
-  for (const s of filteredSites) {
-    await scrapeEvent(s, browser);
+    const { sites } = await sitemap.fetch();
+
+    console.log("[+] urls:", sites.length);
+
+    // Launch the browser and open a new blank page
+    const browser = await puppeteer.launch({
+      headless: "new",
+    });
+
+    for (const url of sites) {
+      try {
+        const data = await scrapeEvent(browser, url);
+        if (data === null) {
+          console.log("[-] failed to scrape data");
+          continue;
+        }
+
+        if (online) {
+          await saveScrapeResult(metadata, runId, data);
+        }
+      } catch (e) {
+        console.log("[!!!] error:", e);
+        continue;
+      }
+    }
+    await browser.close();
+
+    if (online) {
+      await endScrapeRun(metadata, runId, { error: null });
+      await notifyOnScrapeSuccess({
+        runId,
+        eventCount: sites.length,
+      });
+    }
+  } catch (err: any) {
+    console.log("[-] error:", err);
+    await endScrapeRun(metadata, runId, { error: err.message });
+    if (online) {
+      await notifyOnScrapeFailure({
+        error: err.message,
+      });
+    }
+    throw err;
   }
-
-  await browser.close();
 }
 
-scrape();
+if (require.main === module) {
+  configDotenv({
+    path: ".env",
+  });
+
+  scrape({ online: true });
+}

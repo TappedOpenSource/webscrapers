@@ -143,7 +143,7 @@ async function scrapeEvent(
 }
 
 export async function scrape({ online }: { online: boolean }): Promise<void> {
-  console.log(`[+] scraping jungle room [online: ${online}]`);
+  console.log(`[+] scraping [online: ${online}]`);
   const latestRun = await getLatestRun(metadata);
   const runId = online ? await startScrapeRun(metadata) : "test-run";
 
@@ -159,7 +159,7 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
 
     const { sites } = await sitemap.fetch();
 
-    console.log("[+] jungle room urls:", sites.length);
+    console.log("[+] urls:", sites.length);
 
     // Launch the browser and open a new blank page
     const browser = await puppeteer.launch({
