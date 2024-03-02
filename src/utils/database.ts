@@ -181,7 +181,7 @@ export async function getOrCreateArtist({
       profilePicture: null,
       performerInfo: {
         label: "None",
-        genres: ["edm"],
+        genres: [],
         rating: 5.0,
         reviewCount: 1,
       },

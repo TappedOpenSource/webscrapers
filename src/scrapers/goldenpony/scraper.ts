@@ -226,7 +226,9 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
           continue;
         }
 
-        // console.log(`[+] scraped data: ${data.title} - #${data.artists.join('|')}# [${data.startTime.toLocaleString()} - ${data.endTime.toLocaleString()}]`);
+        console.log(
+          `[+] scraped data: ${data.title} - [${data.artists.join("|")}] [${data.startTime.toLocaleString()}]`,
+        );
         if (online) {
           await saveScrapeResult(metadata, runId, data);
         }
@@ -235,7 +237,7 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
         continue;
       }
     }
-    //await browser.close();
+    await browser.close();
 
     if (online) {
       await endScrapeRun(metadata, runId, { error: null });
