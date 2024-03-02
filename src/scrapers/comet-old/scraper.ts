@@ -49,6 +49,8 @@ async function scrapeEvent(
     title: eventArtists.join(", "),
     description: "",
     ticketPrice: null,
+    advTicketPrice:null,
+    doorTicketPrice:null,
     artists: eventArtists,
     startTime: dateTime,
     endTime: dateTime,

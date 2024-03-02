@@ -21,18 +21,21 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { configDotenv } from "dotenv";
 
-async function scrapeEvent(
-  browser: Browser,
-  eventUrl: string,
-): Promise<ScrapedEventData | null> {
+function getUnixTimestampForYesterday() {
+  const now = new Date();
+  const yesterday = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+  return Math.floor(yesterday.getTime() / 1000);
+}
+
+async function scrapeEvent(browser: Browser, eventUrl: string): Promise<ScrapedEventData | null> {
   const eventName = getEventNameFromUrl(eventUrl);
 
   if (!eventName) {
-    console.log("[-] event name not found: ", eventUrl);
+    console.log('[-] event name not found: ', eventUrl);
     return null;
   }
 
-  console.log("[+] scraping event:", eventName);
+  console.log('[+] scraping event:', eventName);
 
   const page = await browser.newPage();
   // page.on('console', async (msg) => {
@@ -49,53 +52,82 @@ async function scrapeEvent(
   // Set screen size
   await page.setViewport({ width: 1080, height: 1024 });
 
-  const element = await page.waitForSelector(".page-title");
+  const element = await page.waitForSelector('.event-title');
 
   if (!element) {
-    console.log("[-] element not found");
+    console.log('[-] element not found');
     return null;
   }
 
-  const title = (
-    (await page.evaluate((element) => element.textContent, element)) ?? ""
-  ).trim();
+  const title = (await page.evaluate(element => element.textContent, element) ?? '').trim();
 
   // Use evaluate to capture text content
   const description = await page.evaluate(() => {
     function getTextContent(element: Element | ChildNode) {
-      var text = "";
+      var text = '';
+      
+      
+      element.childNodes.forEach((node) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          text += ` ${node.textContent} `;
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+          text += ` ${getTextContent(node)} `;
+        }
+      });
 
-      var descriptionContainer = document.querySelector(
-        ".eventitem-column-content",
-      );
-      var descriptionLines = descriptionContainer
-        ? descriptionContainer.querySelectorAll("p")
-        : null;
-      if (descriptionLines) {
-        descriptionLines.forEach((line) => {
-          var lineText = line.textContent;
-          if (!line.classList.contains("entry-actions")) {
-            lineText = lineText ? lineText.replace(" /", ".") : lineText;
-            text = text + " " + lineText;
-          }
-        });
-      }
       return text;
-    }
+    };
+   
+    
 
-    const container = document.querySelector(".eventitem-column-content");
+    const container = document.querySelector('.tw-description');
 
     if (!container) {
-      return "";
+      return '';
     }
     return getTextContent(container).trim();
   });
+  
+  const priceContainer = await page.waitForSelector('.tw-price');
+  let advTicketPrice = null;
+  let doorTicketPrice = null;
+  let ticketPrice = null;
+  if (priceContainer) {
+    let priceContent = (await page.evaluate(priceContainer => priceContainer.textContent, priceContainer));
+    priceContent = priceContent ?? '';
+    priceContent = priceContent.trim() === '' ? '' : priceContent.trim();
 
-  const ticketPrice = parseTicketPrice(description) ?? 5;
+    
+    if (priceContent.includes("-")) {
+      const splitPriceString = priceContent.split("-");
+      const advTicketString = splitPriceString[0]
+      const doorPriceString = splitPriceString[1]
+      advTicketPrice = advTicketString.trim();
+      doorTicketPrice = doorPriceString.trim()
+      advTicketPrice = Number(advTicketPrice.slice(1));
+      doorTicketPrice = Number(doorTicketPrice.slice(1));
+
+
+    } else {
+      let priceString;
+      if (priceContent !== '') {
+        priceString = priceContent.trim();
+        ticketPrice = Number(priceString.slice(1));
+      }
+      
+    };
+
+    //const priceString = (await page.evaluate(priceContainer => priceContainer.textContent, priceContainer) ?? '5').trim();
+    
+    
+  } else {
+    ticketPrice = 5;
+  }
+  //const ticketPrice = parseTicketPrice(description) ?? 5;
 
   const { startTimeStr, endTimeStr } = await page.evaluate(() => {
     function getTextContent(element: Element | ChildNode) {
-      let text = "";
+      let text = '';
 
       // Iterate over child nodes
       element.childNodes.forEach((node) => {
@@ -107,11 +139,12 @@ async function scrapeEvent(
       });
 
       return text;
-    }
+    };
+    
 
-    const container = document.querySelector(".event-time");
+    const container = document.querySelector('.tw-date-time');
     if (container === null) {
-      console.log("[-] container not found");
+      console.log('[-] container not found');
       return {
         startTime: null,
         endTime: null,
@@ -119,85 +152,91 @@ async function scrapeEvent(
     }
 
     const dateString = getTextContent(container).trim();
-
     // Define a regex pattern to capture date and time components
-    const regexPattern =
-      /\s*(\w+), (\w+)\s*(\d{1,2}), (\d{4})\s*(\d{1,2}:\d{2}(?:am|pm))\s*–\s*(\d{1,2}:\d{2}(?:am|pm))/g;
-    //const regexPattern = /\s*(\w+), (\w+)\s*(\d{1,2}), (\d{4})\s*(\d{1,2}:\d{2}(?:am|pm))\s*–\s*(\d{1,2}:\d{2}(?:am|pm))?\s*/g;
+    const regexPattern = /(\w+)\s+(\w+)\s+(\w+)\s+(\d{1,2}:\d{2}\s+(?:am|pm))/gm;
 
     // Create an array to store matched groups
     let match;
     const matches = [];
+
     // Iterate over matches using the regex pattern
     while ((match = regexPattern.exec(dateString)) !== null) {
       matches.push(match.slice(1));
     }
 
-    const amOrPm = String(matches[4]).slice(2, 4) === "pm" ? "pm" : "am";
-    const defaultEndTime =
-      String(Number(matches[0][4].substring(0, 2)) + 2) + amOrPm;
-    const startTimes = [];
-    const endTimes = [];
-    if (matches) {
-      startTimes.push(String(matches[0][0]));
-      startTimes.push(String(matches[0][1]));
-      startTimes.push(String(matches[0][2]));
-      startTimes.push(String(matches[0][3]));
-      startTimes.push(String(matches[0][4]));
+    const startTime = [];
+    const endTime = [];
+    const currDate = new Date();
+    const year = String(currDate.getFullYear());
 
-      endTimes.push(String(matches[0][0]));
-      endTimes.push(String(matches[0][1]));
-      endTimes.push(String(matches[0][2]));
-      endTimes.push(String(matches[0][3]));
-      if (matches[0].length === 6) {
-        endTimes.push(String(matches[0][5]));
-      } else {
-        endTimes.push(defaultEndTime);
-      }
+    if (matches[0]) {
+      const monthString = String(matches[0][1]);
+      const numberDayString = String(matches[0][2]);
+      const startTimeString = String(matches[0][3]);
+      const splitTimeString = startTimeString.split(":");
+      const endTimeString = String(Number(splitTimeString[0]) + 2) + ":" + splitTimeString[1];
+
+      startTime.push(monthString);
+      startTime.push(numberDayString);
+      startTime.push(year);
+      startTime.push(startTimeString);
+
+      endTime.push(monthString);
+      endTime.push(numberDayString);
+      endTime.push(year);
+      endTime.push(endTimeString);
     }
-    matches.push(startTimes);
-    matches.push(endTimes);
 
     return {
-      startTimeStr: matches ? startTimes : null,
-      endTimeStr: matches ? endTimes : null,
+      startTimeStr: startTime ?? null,
+      endTimeStr: endTime ?? null,
     };
   });
 
+
+
   if (!startTimeStr || !endTimeStr) {
-    console.log("[-] start or end time not found");
+    console.log('[-] start or end time not found');
     return null;
   }
 
   const { startTime, endTime } = parseTimes(startTimeStr, endTimeStr);
-
+  /*
+  console.log(title)
+  console.log(description)
+  console.log(ticketPrice)
+  console.log(advTicketPrice)
+  console.log(doorTicketPrice)
+  console.log(startTime)
+  console.log(endTime)
+*/
   if (!startTime || !endTime) {
     console.log(`[-] start or end time not found [${startTime}, ${endTime}]`);
     return null;
   }
 
   const artists = await parseArtists(title);
-
+  
   const id = uuidv4();
 
   return {
     id,
-    isMusicEvent: true,
     url: eventUrl,
+    isMusicEvent:true,
     title,
     description,
-    ticketPrice,
-    advTicketPrice:ticketPrice,
-    doorTicketPrice:ticketPrice,
+    ticketPrice: ticketPrice ?? null,
+    advTicketPrice: ticketPrice ? ticketPrice : advTicketPrice,
+    doorTicketPrice: ticketPrice ? ticketPrice : doorTicketPrice,
     artists,
     startTime,
     endTime,
     flierUrl: null,
-  };
+  }
 }
 
 export async function scrape({ online }: { online: boolean }): Promise<void> {
-  console.log(`[+] scraping golden pony [online: ${online}]`);
+  console.log(`[+] scraping pearl street [online: ${online}]`);
   const latestRun = await getLatestRun(metadata);
   const runId = online ? await startScrapeRun(metadata) : "test-run";
 
@@ -213,16 +252,16 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
 
     const { sites } = await sitemap.fetch();
 
-    console.log("[+] golden pony urls:", sites.length);
+    console.log("[+] pearl street urls:", sites.length);
 
     // Launch the browser and open a new blank page
     const browser = await puppeteer.launch({
       headless: "new",
     });
 
-    for (const goldenPonyUrl of sites) {
+    for (const pearlStreetUrl of sites) {
       try {
-        const data = await scrapeEvent(browser, goldenPonyUrl);
+        const data = await scrapeEvent(browser, pearlStreetUrl);
         if (data === null) {
           console.log("[-] failed to scrape data");
           continue;
@@ -263,5 +302,5 @@ if (require.main === module) {
     path: ".env",
   });
 
-  scrape({ online: false });
+  scrape({ online: true });
 }

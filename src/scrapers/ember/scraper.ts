@@ -69,6 +69,8 @@ async function scrapeEvent(
     title,
     description,
     ticketPrice: null,
+    advTicketPrice:null,
+    doorTicketPrice:null,
     artists,
     startTime,
     endTime,
