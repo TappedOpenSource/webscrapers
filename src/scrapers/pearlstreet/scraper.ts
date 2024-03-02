@@ -201,15 +201,7 @@ async function scrapeEvent(browser: Browser, eventUrl: string): Promise<ScrapedE
   }
 
   const { startTime, endTime } = parseTimes(startTimeStr, endTimeStr);
-  /*
-  console.log(title)
-  console.log(description)
-  console.log(ticketPrice)
-  console.log(advTicketPrice)
-  console.log(doorTicketPrice)
-  console.log(startTime)
-  console.log(endTime)
-*/
+
   if (!startTime || !endTime) {
     console.log(`[-] start or end time not found [${startTime}, ${endTime}]`);
     return null;
@@ -302,5 +294,5 @@ if (require.main === module) {
     path: ".env",
   });
 
-  scrape({ online: true });
+  scrape({ online: false });
 }
