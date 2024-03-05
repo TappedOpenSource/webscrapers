@@ -16,6 +16,7 @@ import {
   getEventNameFromUrl,
   parseArtists,
   parseTicketPrice,
+  parseDescription,
   parseTimes,
 } from "./parsing";
 import { v4 as uuidv4 } from "uuid";
@@ -61,37 +62,9 @@ async function scrapeEvent(
   ).trim();
 
   // Use evaluate to capture text content
-  const description = await page.evaluate(() => {
-    function getTextContent(element: Element | ChildNode) {
-      var text = "";
+  const description = (await parseDescription(page)) ?? "";
 
-      var descriptionContainer = document.querySelector(
-        ".eventitem-column-content",
-      );
-      var descriptionLines = descriptionContainer
-        ? descriptionContainer.querySelectorAll("p")
-        : null;
-      if (descriptionLines) {
-        descriptionLines.forEach((line) => {
-          var lineText = line.textContent;
-          if (!line.classList.contains("entry-actions")) {
-            lineText = lineText ? lineText.replace(" /", ".") : lineText;
-            text = text + " " + lineText;
-          }
-        });
-      }
-      return text;
-    }
-
-    const container = document.querySelector(".eventitem-column-content");
-
-    if (!container) {
-      return "";
-    }
-    return getTextContent(container).trim();
-  });
-
-  const ticketPrice = parseTicketPrice(description) ?? 5;
+  const [ticketPrice, doorPrice] = parseTicketPrice(description) ?? [null, null];
 
   const { startTimeStr, endTimeStr } = await page.evaluate(() => {
     function getTextContent(element: Element | ChildNode) {
@@ -121,42 +94,53 @@ async function scrapeEvent(
     const dateString = getTextContent(container).trim();
 
     // Define a regex pattern to capture date and time components
-    const regexPattern =
-      /\s*(\w+), (\w+)\s*(\d{1,2}), (\d{4})\s*(\d{1,2}:\d{2}(?:am|pm))\s*–\s*(\d{1,2}:\d{2}(?:am|pm))/g;
-    //const regexPattern = /\s*(\w+), (\w+)\s*(\d{1,2}), (\d{4})\s*(\d{1,2}:\d{2}(?:am|pm))\s*–\s*(\d{1,2}:\d{2}(?:am|pm))?\s*/g;
 
+    const regexPattern = new RegExp(/(\w+), (\w+)\s*(\d{1,2}), (\d{4})(?: – (\w+), (\w+)\s*(\d{1,2}\s*), (\d{4}))?\s*((\d{1,2}:\d{2}(?:pm|am)))(?: \s*–\s* (\d{1,2}:\d{2}(?:pm|am)))?/,"g")
+    
     // Create an array to store matched groups
     let match;
     const matches = [];
     // Iterate over matches using the regex pattern
     while ((match = regexPattern.exec(dateString)) !== null) {
-      matches.push(match.slice(1));
+      matches.push(match.slice(1))
+ 
+      
     }
 
-    const amOrPm = String(matches[4]).slice(2, 4) === "pm" ? "pm" : "am";
+    const amOrPm = String(matches[0][9]).slice(4) === "pm" ? "pm" : "am";
     const defaultEndTime =
-      String(Number(matches[0][4].substring(0, 2)) + 2) + amOrPm;
+      String(Number(matches[0][9].split(":")[0]) + 2) + amOrPm;
+
+      
     const startTimes = [];
     const endTimes = [];
+    
     if (matches) {
       startTimes.push(String(matches[0][0]));
       startTimes.push(String(matches[0][1]));
       startTimes.push(String(matches[0][2]));
       startTimes.push(String(matches[0][3]));
-      startTimes.push(String(matches[0][4]));
-
-      endTimes.push(String(matches[0][0]));
-      endTimes.push(String(matches[0][1]));
-      endTimes.push(String(matches[0][2]));
-      endTimes.push(String(matches[0][3]));
-      if (matches[0].length === 6) {
-        endTimes.push(String(matches[0][5]));
+      startTimes.push(String(matches[0][9]));
+      if (matches[0][4]) {
+        endTimes.push(String(matches[0][4]))
+        endTimes.push(String(matches[0][5]))
+        endTimes.push(String(matches[0][6]))
+        endTimes.push(String(matches[0][7]))
+        endTimes.push(String(matches[0][9]))
       } else {
-        endTimes.push(defaultEndTime);
+        endTimes.push(String(matches[0][0]))
+        endTimes.push(String(matches[0][1]))
+        endTimes.push(String(matches[0][2]))
+        endTimes.push(String(matches[0][3]))
+        if (matches[0][10]) {
+          endTimes.push(String(matches[0][10]))
+        } else {
+          endTimes.push(defaultEndTime)
+        }
       }
+      
+
     }
-    matches.push(startTimes);
-    matches.push(endTimes);
 
     return {
       startTimeStr: matches ? startTimes : null,
@@ -187,6 +171,7 @@ async function scrapeEvent(
     title,
     description,
     ticketPrice,
+    doorPrice,
     artists,
     startTime,
     endTime,
@@ -210,7 +195,7 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
     });
 
     const { sites } = await sitemap.fetch();
-
+    //const sites = ["https://www.goldenponyva.com/events-list/2023/3/11/noches-latinas-w-dj-guate-21-pgpwm-g7l7w-4pr8f", "https://www.goldenponyva.com/events-list/2024/3/7/sub-radio-wmoontower-at-the-golden-pony-18"];
     console.log("[+] golden pony urls:", sites.length);
 
     // Launch the browser and open a new blank page

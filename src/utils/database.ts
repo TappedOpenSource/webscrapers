@@ -71,7 +71,7 @@ export async function saveScrapeResult(
   console.log(`[+] saving scrape result for ${runId} - ${data.title}`);
 
   const userId = scraper.id;
-
+  
   await rawScrappingRef
     .doc(userId)
     .collection("scrapeRuns")

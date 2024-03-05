@@ -7,6 +7,7 @@ import {
   saveScrapeResult,
   startScrapeRun,
 } from "../../utils/database";
+import { metadata } from "./config";
 import {
   notifyOnScrapeFailure,
   notifyOnScrapeSuccess,
@@ -15,25 +16,27 @@ import {
   getEventNameFromUrl,
   parseArtists,
   parseTicketPrice,
+  parseDescription,
   parseTimes,
 } from "./parsing";
-import { metadata } from "./config";
-import { configDotenv } from "dotenv";
 import { v4 as uuidv4 } from "uuid";
-import { getTextContent } from "../../utils/text_content";
+import { configDotenv } from "dotenv";
 
-async function scrapeEvent(
-  browser: Browser,
-  eventUrl: string,
-): Promise<ScrapedEventData | null> {
+function getUnixTimestampForYesterday() {
+  const now = new Date();
+  const yesterday = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+  return Math.floor(yesterday.getTime() / 1000);
+}
+
+async function scrapeEvent(browser: Browser, eventUrl: string): Promise<ScrapedEventData | null> {
   const eventName = getEventNameFromUrl(eventUrl);
 
   if (!eventName) {
-    console.log("[-] event name not found: ", eventUrl);
+    console.log('[-] event name not found: ', eventUrl);
     return null;
   }
 
-  console.log("[+] scraping event:", eventName);
+  console.log('[+] scraping event:', eventName);
 
   const page = await browser.newPage();
   // page.on('console', async (msg) => {
@@ -50,25 +53,31 @@ async function scrapeEvent(
   // Set screen size
   await page.setViewport({ width: 1080, height: 1024 });
 
-  const element = await page.waitForSelector(".eventitem-title");
+  const element = await page.waitForSelector('.event-title');
 
   if (!element) {
-    console.log("[-] element not found");
+    console.log('[-] element not found');
     return null;
   }
 
-  const title = (
-    (await page.evaluate((element) => element.textContent, element)) ?? ""
-  ).trim();
+  const title = (await page.evaluate(element => element.textContent, element) ?? '').trim();
+  const description = (await parseDescription(page)) ?? "";
+  
+  const priceContainer = await page.waitForSelector('.tw-price');
 
-  // Use evaluate to capture text content
-  const description = await getTextContent(page, ".eventitem-column-content");
+  if (!priceContainer) {
+    console.log('[-] price not found');
+    return null;
+  }
 
-  const ticketPrice = parseTicketPrice(description) ?? 5;
+  const price = (await page.evaluate(priceContainer => priceContainer.textContent, priceContainer) ?? '').trim();
+
+  // null if price string is empty
+  const [ticketPrice, doorPrice] = parseTicketPrice(price);
 
   const { startTimeStr, endTimeStr } = await page.evaluate(() => {
     function getTextContent(element: Element | ChildNode) {
-      let text = "";
+      let text = '';
 
       // Iterate over child nodes
       element.childNodes.forEach((node) => {
@@ -80,11 +89,12 @@ async function scrapeEvent(
       });
 
       return text;
-    }
+    };
+    
 
-    const container = document.querySelector(".eventitem-meta-date");
+    const container = document.querySelector('.tw-date-time');
     if (container === null) {
-      console.log("[-] container not found");
+      console.log('[-] container not found');
       return {
         startTime: null,
         endTime: null,
@@ -92,10 +102,8 @@ async function scrapeEvent(
     }
 
     const dateString = getTextContent(container).trim();
-
     // Define a regex pattern to capture date and time components
-    const regexPattern =
-      /\s*(\w+), (\w+) (\d{1,2}), (\d{4})\s*(\d{1,2}:\d{2} (AM|PM))\s*/g;
+    const regexPattern = /(\w+)\s+(\w+)\s+(\w+)\s+(\d{1,2}:\d{2}\s+(?:am|pm))/gm;
 
     // Create an array to store matched groups
     let match;
@@ -106,14 +114,39 @@ async function scrapeEvent(
       matches.push(match.slice(1));
     }
 
+    const startTime = [];
+    const endTime = [];
+    const currDate = new Date();
+    const year = String(currDate.getFullYear());
+
+    if (matches[0]) {
+      const monthString = String(matches[0][1]);
+      const numberDayString = String(matches[0][2]);
+      const startTimeString = String(matches[0][3]);
+      const splitTimeString = startTimeString.split(":");
+      const endTimeString = String(Number(splitTimeString[0]) + 2) + ":" + splitTimeString[1];
+
+      startTime.push(monthString);
+      startTime.push(numberDayString);
+      startTime.push(year);
+      startTime.push(startTimeString);
+
+      endTime.push(monthString);
+      endTime.push(numberDayString);
+      endTime.push(year);
+      endTime.push(endTimeString);
+    }
+
     return {
-      startTimeStr: matches[0] ?? null,
-      endTimeStr: matches[1] ?? null,
+      startTimeStr: startTime ?? null,
+      endTimeStr: endTime ?? null,
     };
   });
 
+
+
   if (!startTimeStr || !endTimeStr) {
-    console.log("[-] start or end time not found");
+    console.log('[-] start or end time not found');
     return null;
   }
 
@@ -125,51 +158,51 @@ async function scrapeEvent(
   }
 
   const artists = await parseArtists(title);
-
+  
   const id = uuidv4();
-
+ 
   return {
     id,
-    isMusicEvent: true,
     url: eventUrl,
+    isMusicEvent:true,
     title,
     description,
-    ticketPrice,
-    doorPrice:ticketPrice,
+    ticketPrice: ticketPrice ?? null,
+    doorPrice: doorPrice ? doorPrice : ticketPrice ?? null,
     artists,
     startTime,
     endTime,
     flierUrl: null,
-  };
+  }
 }
 
 export async function scrape({ online }: { online: boolean }): Promise<void> {
-  console.log(`[+] scraping [online: ${online}]`);
+  console.log(`[+] scraping pearl street [online: ${online}]`);
   const latestRun = await getLatestRun(metadata);
   const runId = online ? await startScrapeRun(metadata) : "test-run";
 
   try {
     const lateRunStart = latestRun?.startTime ?? null;
     const lastmod = lateRunStart?.getTime();
+
     const sitemap = new Sitemapper({
       url: metadata.sitemap,
       lastmod,
-      // lastmod: (new Date('2024-02-01')).getTime(),
       timeout: 30000,
     });
 
     const { sites } = await sitemap.fetch();
 
-    console.log("[+] urls:", sites.length);
+    console.log("[+] pearl street urls:", sites.length);
 
     // Launch the browser and open a new blank page
     const browser = await puppeteer.launch({
       headless: "new",
     });
 
-    for (const jungleRoomUrl of sites) {
+    for (const pearlStreetUrl of sites) {
       try {
-        const data = await scrapeEvent(browser, jungleRoomUrl);
+        const data = await scrapeEvent(browser, pearlStreetUrl);
         if (data === null) {
           console.log("[-] failed to scrape data");
           continue;
@@ -195,8 +228,8 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
     }
   } catch (err: any) {
     console.log("[-] error:", err);
-    await endScrapeRun(metadata, runId, { error: err.message });
     if (online) {
+      await endScrapeRun(metadata, runId, { error: err.message });
       await notifyOnScrapeFailure({
         error: err.message,
       });

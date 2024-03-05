@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc",
     "scrape:jungleroom": "npm run build && node dist/scrapers/jungleroom/scraper.js",
+    "scrape:pearlstreet": "npm run build && node dist/scrapers/pearlstreet/scraper.js",
     "scrape:goldenpony": "npm run build && node dist/scrapers/goldenpony/scraper.js",
     "scrape:ember": "npm run build && node dist/scrapers/ember/scraper.js",
     "scrape:wonderville": "npm run build && node dist/scrapers/wonderville/scraper.js",
