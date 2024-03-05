@@ -1,3 +1,4 @@
+import {Page} from "puppeteer";
 import { ChatOpenAI } from "@langchain/openai";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { JsonOutputFunctionsParser } from "langchain/output_parsers";
@@ -16,17 +17,60 @@ export function getEventNameFromUrl(url: string) {
 }
 
 export function parseTicketPrice(desc: string) {
-  const regex = /DOS:\s*\$\s*(\d+)/i;
-  const match = desc.match(regex);
+  const pricesRegex = /s*\$\s*(\d+)/g;
 
-  if (match && match[1]) {
-    const ticketPriceStr = match[1];
-    const ticketPrice = parseInt(ticketPriceStr, 10);
-    return ticketPrice;
+  
+  const prices = desc.match(pricesRegex)
+
+  let ticketPrice;
+  let doorPrice;
+  if (prices) {
+    if (prices[1]) {
+      doorPrice = parseInt(prices[1].slice(1), 10);
+      ticketPrice = parseInt(prices[0].slice(1), 10);
+    } else {
+      if (prices[0]) {
+        ticketPrice = parseInt(prices[0].slice(1), 10);
+        doorPrice = ticketPrice;
+
+      }
+    }
   }
 
-  return null;
+  return [ticketPrice ?? null, doorPrice ?? null];
 }
+
+export async function parseDescription(page: Page): Promise<string | null> {
+    return await page.evaluate(() => {
+    function getTextContent(element: Element | ChildNode) {
+      var text = "";
+
+      var descriptionContainer = document.querySelector(
+        ".eventitem-column-content",
+      );
+      var descriptionLines = descriptionContainer
+        ? descriptionContainer.querySelectorAll("p")
+        : null;
+      if (descriptionLines) {
+        descriptionLines.forEach((line) => {
+          var lineText = line.textContent;
+          if (!line.classList.contains("entry-actions")) {
+            lineText = lineText ? lineText.replace(" /", ".") : lineText;
+            text = text + " " + lineText;
+          }
+        });
+      }
+      return text;
+    }
+
+    const container = document.querySelector(".eventitem-column-content");
+
+    if (!container) {
+      return "";
+    }
+    return getTextContent(container).trim();
+});
+};
 
 export function parseTimes(startTimeStr: string[], endTimeStr: string[]) {
   const [startTime, endTime] = [startTimeStr, endTimeStr].map(
@@ -110,7 +154,7 @@ export async function parseArtists(title: string): Promise<string[]> {
     can you parse this string into an array with the names of all the musicians.
     the website this was copied from uses all kind of delimiters such as "&" "W." "w/", "W/" or ","
     but also longer natural language delimiters like "with support from".
-    These are mostly EDM musicians so things like B2B mean 'back to back' so that's not part of the name
+    These are mostly Rock, Folk, Punk, Psychedelic, Metal, and Alt Country musicians so short words containing numbers or symbols are not part of the name
     `);
   const msg = new HumanMessage(`
                     the string: "${title}"
