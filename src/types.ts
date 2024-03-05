@@ -30,8 +30,7 @@ export type ScrapedEventData = {
   description: string;
   artists: string[];
   ticketPrice: Option<number>;
-  advTicketPrice: Option<number>;
-  doorTicketPrice: Option<number>;
+  doorPrice: Option<number>;
   startTime: Date;
   endTime: Date;
   flierUrl: Option<string>;

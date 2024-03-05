@@ -16,6 +16,7 @@ import {
   getEventNameFromUrl,
   parseArtists,
   parseTicketPrice,
+  parseDescription,
   parseTimes,
 } from "./parsing";
 import { v4 as uuidv4 } from "uuid";
@@ -60,70 +61,19 @@ async function scrapeEvent(browser: Browser, eventUrl: string): Promise<ScrapedE
   }
 
   const title = (await page.evaluate(element => element.textContent, element) ?? '').trim();
-
-  // Use evaluate to capture text content
-  const description = await page.evaluate(() => {
-    function getTextContent(element: Element | ChildNode) {
-      var text = '';
-      
-      
-      element.childNodes.forEach((node) => {
-        if (node.nodeType === Node.TEXT_NODE) {
-          text += ` ${node.textContent} `;
-        } else if (node.nodeType === Node.ELEMENT_NODE) {
-          text += ` ${getTextContent(node)} `;
-        }
-      });
-
-      return text;
-    };
-   
-    
-
-    const container = document.querySelector('.tw-description');
-
-    if (!container) {
-      return '';
-    }
-    return getTextContent(container).trim();
-  });
+  const description = (await parseDescription(page)) ?? "";
   
   const priceContainer = await page.waitForSelector('.tw-price');
-  let advTicketPrice = null;
-  let doorTicketPrice = null;
-  let ticketPrice = null;
-  if (priceContainer) {
-    let priceContent = (await page.evaluate(priceContainer => priceContainer.textContent, priceContainer));
-    priceContent = priceContent ?? '';
-    priceContent = priceContent.trim() === '' ? '' : priceContent.trim();
 
-    
-    if (priceContent.includes("-")) {
-      const splitPriceString = priceContent.split("-");
-      const advTicketString = splitPriceString[0]
-      const doorPriceString = splitPriceString[1]
-      advTicketPrice = advTicketString.trim();
-      doorTicketPrice = doorPriceString.trim()
-      advTicketPrice = Number(advTicketPrice.slice(1));
-      doorTicketPrice = Number(doorTicketPrice.slice(1));
-
-
-    } else {
-      let priceString;
-      if (priceContent !== '') {
-        priceString = priceContent.trim();
-        ticketPrice = Number(priceString.slice(1));
-      }
-      
-    };
-
-    //const priceString = (await page.evaluate(priceContainer => priceContainer.textContent, priceContainer) ?? '5').trim();
-    
-    
-  } else {
-    ticketPrice = 5;
+  if (!priceContainer) {
+    console.log('[-] price not found');
+    return null;
   }
-  //const ticketPrice = parseTicketPrice(description) ?? 5;
+
+  const price = (await page.evaluate(priceContainer => priceContainer.textContent, priceContainer) ?? '').trim();
+
+  // null if price string is empty
+  const [ticketPrice, doorPrice] = parseTicketPrice(price);
 
   const { startTimeStr, endTimeStr } = await page.evaluate(() => {
     function getTextContent(element: Element | ChildNode) {
@@ -210,7 +160,7 @@ async function scrapeEvent(browser: Browser, eventUrl: string): Promise<ScrapedE
   const artists = await parseArtists(title);
   
   const id = uuidv4();
-
+ 
   return {
     id,
     url: eventUrl,
@@ -218,8 +168,7 @@ async function scrapeEvent(browser: Browser, eventUrl: string): Promise<ScrapedE
     title,
     description,
     ticketPrice: ticketPrice ?? null,
-    advTicketPrice: ticketPrice ? ticketPrice : advTicketPrice,
-    doorTicketPrice: ticketPrice ? ticketPrice : doorTicketPrice,
+    doorPrice: doorPrice ? doorPrice : ticketPrice ?? null,
     artists,
     startTime,
     endTime,
