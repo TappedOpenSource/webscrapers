@@ -60,3 +60,27 @@ export async function notifyOnScrapeFailure({ error }: {
         body: `most recent scrape failed with error: ${error}`,
     });
 }
+
+
+async function slackNotification() {
+    try {
+        const response = await fetch('https://hooks.slack.com/services/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', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                text: `Scrape completed succesfully on ${new Date()}`
+            }),
+        });
+
+        if (response.ok) {
+            console.log('Notification sent to Slack successfully');
+        } else {
+            throw new Error('Slack notification failed to send');
+        }
+    } catch (error) {
+        console.error(error);
+    }
+}
+
