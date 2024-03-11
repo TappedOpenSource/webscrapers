@@ -8,7 +8,8 @@ const production = process.env.NODE_ENV === "production";
 
 const credential = production
   ? applicationDefault()
-  : cert(require("../credentials.json"));
+  : // eslint-disable-next-line @typescript-eslint/no-var-requires
+  cert(require("../credentials.json"));
 
 const app = initializeApp({
   projectId: "in-the-loop-306520",

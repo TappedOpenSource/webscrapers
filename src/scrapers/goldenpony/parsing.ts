@@ -1,4 +1,4 @@
-import {Page} from "puppeteer";
+import { Page } from "puppeteer";
 import { ChatOpenAI } from "@langchain/openai";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { JsonOutputFunctionsParser } from "langchain/output_parsers";
@@ -19,8 +19,7 @@ export function getEventNameFromUrl(url: string) {
 export function parseTicketPrice(desc: string) {
   const pricesRegex = /s*\$\s*(\d+)/g;
 
-  
-  const prices = desc.match(pricesRegex)
+  const prices = desc.match(pricesRegex);
 
   let ticketPrice;
   let doorPrice;
@@ -32,7 +31,6 @@ export function parseTicketPrice(desc: string) {
       if (prices[0]) {
         ticketPrice = parseInt(prices[0].slice(1), 10);
         doorPrice = ticketPrice;
-
       }
     }
   }
@@ -41,19 +39,19 @@ export function parseTicketPrice(desc: string) {
 }
 
 export async function parseDescription(page: Page): Promise<string | null> {
-    return await page.evaluate(() => {
-    function getTextContent(element: Element | ChildNode) {
-      var text = "";
+  return await page.evaluate(() => {
+    function getTextContent() {
+      let text = "";
 
-      var descriptionContainer = document.querySelector(
+      const descriptionContainer = document.querySelector(
         ".eventitem-column-content",
       );
-      var descriptionLines = descriptionContainer
+      const descriptionLines = descriptionContainer
         ? descriptionContainer.querySelectorAll("p")
         : null;
       if (descriptionLines) {
         descriptionLines.forEach((line) => {
-          var lineText = line.textContent;
+          let lineText = line.textContent;
           if (!line.classList.contains("entry-actions")) {
             lineText = lineText ? lineText.replace(" /", ".") : lineText;
             text = text + " " + lineText;
@@ -69,8 +67,8 @@ export async function parseDescription(page: Page): Promise<string | null> {
       return "";
     }
     return getTextContent(container).trim();
-});
-};
+  });
+}
 
 export function parseTimes(startTimeStr: string[], endTimeStr: string[]) {
   const [startTime, endTime] = [startTimeStr, endTimeStr].map(
