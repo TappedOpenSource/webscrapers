@@ -23,4 +23,6 @@ export const projectId = app.options.projectId;
 
 export const openaiApiKey = process.env["OPENAI_API_KEY"] ?? "";
 
+export const URL = process.env.URL;
+
 export { auth, db, fcm, storage };

@@ -1,86 +1,49 @@
-import { fcm } from "../firebase";
-import { tokensRef } from "./database";
+import { URL } from "../firebase";
 
-const foundersIds: string[] = [
-    "8yYVxpQ7cURSzNfBsaBGF7A7kkv2", // Johannes
-    "n4zIL6bOuPTqRC3dtsl6gyEBPQl1", // Ilias
-];
-
-async function notifyFounders({ title, body }: {
-    title: string;
-    body: string;
+export async function notifyOnScrapeSuccess({
+  runId,
+  eventCount,
+}: {
+  runId: string;
+  eventCount: number;
 }) {
-    foundersIds.map(async (founderId) => {
-        const tokensSnap = await tokensRef
-            .doc(founderId)
-            .collection("tokens")
-            .get();
-
-
-        const tokens: string[] = tokensSnap.docs.map((snap) => snap.id);
-        await Promise.all(tokens.map(async (token) => {
-            try {
-                await fcm.send({
-                    token,
-                    notification: {
-                        title,
-                        body,
-                    },
-                });
-            } catch (e: any) {
-                console.log(`[!!!] error sending notification to token: ${token} - ${e.message}`);
-                await tokensRef.doc(founderId).collection("tokens").doc(token).delete();
-            }
-        }));
+  if (eventCount === 0) {
+    await slackNotification({
+      text: `no new events in scrape run ${runId} - ${new Date()}`,
     });
+  }
+
+  await slackNotification({
+    text: `scrape run ${runId} succeeded with ${eventCount} new events - ${new Date()}`,
+  });
 }
 
-export async function notifyOnScrapeSuccess({ runId, eventCount }: {
-    runId: string;
-    eventCount: number;
-}) {
-    if (eventCount === 0) {
-        await notifyFounders({
-            title: "jungle room scrape success",
-            body: `no new events in scrape run ${runId}`,
-        });
-    }
-
-    await notifyFounders({
-        title: "jungle room scrape success",
-        body: `scrape run ${runId} succeeded with ${eventCount} new events`,
-    });
+export async function notifyOnScrapeFailure({ error }: { error: string }) {
+  await slackNotification({
+    text: `most recent scrape failed with error: ${error} - ${new Date()}`,
+  });
 }
 
-export async function notifyOnScrapeFailure({ error }: {
-    error: string;
-}) {
-    await notifyFounders({
-        title: "jungle room scrape failure",
-        body: `most recent scrape failed with error: ${error}`,
-    });
-}
-
-
-async function slackNotification() {
+interface SlackMessage {
+    text: string;
+  }
+  
+  async function slackNotification(message: SlackMessage) {
     try {
-        const response = await fetch('https://hooks.slack.com/services/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', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                text: `Scrape completed succesfully on ${new Date()}`
-            }),
-        });
-
-        if (response.ok) {
-            console.log('Notification sent to Slack successfully');
-        } else {
-            throw new Error('Slack notification failed to send');
-        }
+      const response = await fetch(URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(message),
+      });
+  
+      if (response.ok) {
+        console.log("Notification sent to Slack successfully");
+      } else {
+        throw new Error("Slack notification failed to send");
+      }
     } catch (error) {
-        console.error(error);
+      console.error(error);
     }
-}
-
+  }
