@@ -22,21 +22,18 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { configDotenv } from "dotenv";
 
-function getUnixTimestampForYesterday() {
-  const now = new Date();
-  const yesterday = new Date(now.getTime() - (24 * 60 * 60 * 1000));
-  return Math.floor(yesterday.getTime() / 1000);
-}
-
-async function scrapeEvent(browser: Browser, eventUrl: string): Promise<ScrapedEventData | null> {
+async function scrapeEvent(
+  browser: Browser,
+  eventUrl: string,
+): Promise<ScrapedEventData | null> {
   const eventName = getEventNameFromUrl(eventUrl);
 
   if (!eventName) {
-    console.log('[-] event name not found: ', eventUrl);
+    console.log("[-] event name not found: ", eventUrl);
     return null;
   }
 
-  console.log('[+] scraping event:', eventName);
+  console.log("[+] scraping event:", eventName);
 
   const page = await browser.newPage();
   // page.on('console', async (msg) => {
@@ -53,31 +50,38 @@ async function scrapeEvent(browser: Browser, eventUrl: string): Promise<ScrapedE
   // Set screen size
   await page.setViewport({ width: 1080, height: 1024 });
 
-  const element = await page.waitForSelector('.event-title');
+  const element = await page.waitForSelector(".event-title");
 
   if (!element) {
-    console.log('[-] element not found');
+    console.log("[-] element not found");
     return null;
   }
 
-  const title = (await page.evaluate(element => element.textContent, element) ?? '').trim();
+  const title = (
+    (await page.evaluate((element) => element.textContent, element)) ?? ""
+  ).trim();
   const description = (await parseDescription(page)) ?? "";
-  
-  const priceContainer = await page.waitForSelector('.tw-price');
+
+  const priceContainer = await page.waitForSelector(".tw-price");
 
   if (!priceContainer) {
-    console.log('[-] price not found');
+    console.log("[-] price not found");
     return null;
   }
 
-  const price = (await page.evaluate(priceContainer => priceContainer.textContent, priceContainer) ?? '').trim();
+  const price = (
+    (await page.evaluate(
+      (priceContainer) => priceContainer.textContent,
+      priceContainer,
+    )) ?? ""
+  ).trim();
 
   // null if price string is empty
   const [ticketPrice, doorPrice] = parseTicketPrice(price);
 
   const { startTimeStr, endTimeStr } = await page.evaluate(() => {
     function getTextContent(element: Element | ChildNode) {
-      let text = '';
+      let text = "";
 
       // Iterate over child nodes
       element.childNodes.forEach((node) => {
@@ -89,12 +93,11 @@ async function scrapeEvent(browser: Browser, eventUrl: string): Promise<ScrapedE
       });
 
       return text;
-    };
-    
+    }
 
-    const container = document.querySelector('.tw-date-time');
+    const container = document.querySelector(".tw-date-time");
     if (container === null) {
-      console.log('[-] container not found');
+      console.log("[-] container not found");
       return {
         startTime: null,
         endTime: null,
@@ -103,7 +106,8 @@ async function scrapeEvent(browser: Browser, eventUrl: string): Promise<ScrapedE
 
     const dateString = getTextContent(container).trim();
     // Define a regex pattern to capture date and time components
-    const regexPattern = /(\w+)\s+(\w+)\s+(\w+)\s+(\d{1,2}:\d{2}\s+(?:am|pm))/gm;
+    const regexPattern =
+      /(\w+)\s+(\w+)\s+(\w+)\s+(\d{1,2}:\d{2}\s+(?:am|pm))/gm;
 
     // Create an array to store matched groups
     let match;
@@ -124,7 +128,8 @@ async function scrapeEvent(browser: Browser, eventUrl: string): Promise<ScrapedE
       const numberDayString = String(matches[0][2]);
       const startTimeString = String(matches[0][3]);
       const splitTimeString = startTimeString.split(":");
-      const endTimeString = String(Number(splitTimeString[0]) + 2) + ":" + splitTimeString[1];
+      const endTimeString =
+        String(Number(splitTimeString[0]) + 2) + ":" + splitTimeString[1];
 
       startTime.push(monthString);
       startTime.push(numberDayString);
@@ -143,10 +148,8 @@ async function scrapeEvent(browser: Browser, eventUrl: string): Promise<ScrapedE
     };
   });
 
-
-
   if (!startTimeStr || !endTimeStr) {
-    console.log('[-] start or end time not found');
+    console.log("[-] start or end time not found");
     return null;
   }
 
@@ -158,13 +161,13 @@ async function scrapeEvent(browser: Browser, eventUrl: string): Promise<ScrapedE
   }
 
   const artists = await parseArtists(title);
-  
+
   const id = uuidv4();
- 
+
   return {
     id,
     url: eventUrl,
-    isMusicEvent:true,
+    isMusicEvent: true,
     title,
     description,
     ticketPrice: ticketPrice ?? null,
@@ -173,7 +176,7 @@ async function scrapeEvent(browser: Browser, eventUrl: string): Promise<ScrapedE
     startTime,
     endTime,
     flierUrl: null,
-  }
+  };
 }
 
 export async function scrape({ online }: { online: boolean }): Promise<void> {
