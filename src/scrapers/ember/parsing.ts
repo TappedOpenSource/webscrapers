@@ -78,7 +78,7 @@ export function timeTextToTimestamp(timeString: string): string | null {
   const [, hourString, minuteString] = match;
 
   let hour = parseInt(hourString, 10);
-  let minute = parseInt(minuteString ?? 0, 10);
+  const minute = parseInt(minuteString ?? 0, 10);
 
   // Adjust for AM/PM
   if (/pm/i.test(timeString) && hour < 12) {

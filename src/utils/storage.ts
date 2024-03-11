@@ -9,7 +9,7 @@ export async function uploadImageToFirebase(
     const bucket = storage.bucket("in-the-loop-306520.appspot.com");
     await bucket.file(filePath).save(imageData, {
       metadata: {
-        contentType: `image/jpeg`,
+        contentType: "image/jpeg",
       },
     });
 

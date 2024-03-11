@@ -1,4 +1,4 @@
-import type { Browser, Page } from "puppeteer";
+import type { Browser } from "puppeteer";
 import puppeteer from "puppeteer";
 import Sitemapper from "sitemapper";
 import { metadata } from "./config";

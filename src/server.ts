@@ -10,22 +10,22 @@ const fastify = Fastify({
   logger: true,
 });
 
-fastify.get("/", async function handler(request, reply) {
+fastify.get("/", async function handler() {
   return { status: "ok" };
 });
 
-fastify.get("/health", async function handler(request, reply) {
+fastify.get("/health", async function handler() {
   return { status: "ok" };
 });
 
-fastify.get("/version", async function handler(request, reply) {
+fastify.get("/version", async function handler() {
   const metadata = scrapers.map((scraper) => scraper.metadata);
   return {
     metadata,
   };
 });
 
-fastify.get("/latest", async function handler(request, reply) {
+fastify.get("/latest", async function handler() {
   const latestRuns = await Promise.all(
     scrapers.map(async (scraper) => {
       const latestRun = await getLatestRun(scraper.metadata);

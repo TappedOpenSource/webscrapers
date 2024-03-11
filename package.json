@@ -4,6 +4,7 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
+    "prepare": "husky",
     "build": "tsc",
     "scrape:jungleroom": "npm run build && node dist/scrapers/jungleroom/scraper.js",
     "scrape:pearlstreet": "npm run build && node dist/scrapers/pearlstreet/scraper.js",
@@ -13,7 +14,9 @@
     "scrape:comet-old": "npm run build && node dist/scrapers/comet-old/scraper.js",
     "dev": "nodemon --watch 'src/**/*.ts' src/server.ts",
     "start": "node dist/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix"
   },
   "keywords": [],
   "author": "Johannes Naylor <johannes@tapped.ai>",
@@ -34,6 +37,13 @@
   },
   "devDependencies": {
     "@types/node-schedule": "^2.1.5",
+    "@typescript-eslint/eslint-plugin": "^7.1.1",
+    "eslint": "^8.57.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-security": "^2.1.1",
+    "eslint-plugin-sonarjs": "^0.24.0",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.2",
     "nodemon": "^3.0.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
