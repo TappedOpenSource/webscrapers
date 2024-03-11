@@ -1,4 +1,16 @@
-import { SLACK_WEBHOOK_URL } from "../firebase";
+import { slackWebhookUrl } from "../firebase";
+
+export async function notifyScapeStart({
+  runId,
+  eventCount,
+}: {
+  runId: string;
+  eventCount: number;
+}) {
+  await slackNotification({
+    text: `scrape run ${runId} started with ${eventCount} events - ${new Date()}`,
+  });
+}
 
 export async function notifyOnScrapeSuccess({
   runId,
@@ -9,36 +21,39 @@ export async function notifyOnScrapeSuccess({
 }) {
   if (eventCount === 0) {
     await slackNotification({
-      message: `no new events in scrape run ${runId} - ${new Date()}`,
+      text: `no new events in scrape run ${runId} - ${new Date()}`,
     });
   }
 
   await slackNotification({
-    message: `scrape run ${runId} succeeded with ${eventCount} new events - ${new Date()}`,
+    text: `scrape run ${runId} succeeded with ${eventCount} new events - ${new Date()}`,
   });
 }
 
 export async function notifyOnScrapeFailure({ error }: { error: string }) {
   await slackNotification({
-    message: `most recent scrape failed with error: ${error} - ${new Date()}`,
+    text: `most recent scrape failed with error: ${error} - ${new Date()}`,
   });
 }
 
-async function slackNotification({ message }: { message: string }) {
+async function slackNotification(msg: { text: string }) {
   try {
-    const response = await fetch(SLACK_WEBHOOK_URL, {
+    const response = await fetch(slackWebhookUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(message),
+      body: JSON.stringify(msg),
     });
 
-    if (response.ok) {
-      console.log("Notification sent to Slack successfully");
-    } else {
-      throw new Error("Slack notification failed to send");
+    if (!response.ok) {
+      console.error(
+        `[!!!] slack notification failed to send - ${response.status}`,
+      );
+      return;
     }
+
+    console.log("[+] notification sent to slack successfully");
   } catch (error) {
     console.error(error);
   }

@@ -10,6 +10,7 @@ import {
 import {
   notifyOnScrapeFailure,
   notifyOnScrapeSuccess,
+  notifyScapeStart,
 } from "../../utils/notifications";
 import {
   getEventNameFromUrl,
@@ -135,7 +136,7 @@ async function scrapeEvent(
     title,
     description,
     ticketPrice,
-    doorPrice:ticketPrice,
+    doorPrice: ticketPrice,
     artists,
     startTime,
     endTime,
@@ -161,6 +162,10 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
     const { sites } = await sitemap.fetch();
 
     console.log("[+] urls:", sites.length);
+    await notifyScapeStart({
+      runId,
+      eventCount: sites.length,
+    });
 
     // Launch the browser and open a new blank page
     const browser = await puppeteer.launch({

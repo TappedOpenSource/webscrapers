@@ -11,6 +11,7 @@ import { metadata } from "./config";
 import {
   notifyOnScrapeFailure,
   notifyOnScrapeSuccess,
+  notifyScapeStart,
 } from "../../utils/notifications";
 import {
   getEventNameFromUrl,
@@ -197,6 +198,10 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
     const { sites } = await sitemap.fetch();
 
     console.log("[+] pearl street urls:", sites.length);
+    await notifyScapeStart({
+      runId,
+      eventCount: sites.length,
+    });
 
     // Launch the browser and open a new blank page
     const browser = await puppeteer.launch({
@@ -211,7 +216,9 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
           continue;
         }
 
-        // console.log(`[+] scraped data: ${data.title} - #${data.artists.join('|')}# [${data.startTime.toLocaleString()} - ${data.endTime.toLocaleString()}]`);
+        // console.log(
+        //   `[+] scraped data: ${data.title} - #${data.artists.join("|")}# [${data.startTime.toLocaleString()} - ${data.endTime.toLocaleString()}]`,
+        // );
         if (online) {
           await saveScrapeResult(metadata, runId, data);
         }
