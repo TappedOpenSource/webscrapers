@@ -40,15 +40,10 @@ export function parseTicketPrice(desc: string) {
 
 export async function parseDescription(page: Page): Promise<string | null> {
   return await page.evaluate(() => {
-    function getTextContent() {
+    function getTextContent(element: Element) {
       let text = "";
 
-      const descriptionContainer = document.querySelector(
-        ".eventitem-column-content",
-      );
-      const descriptionLines = descriptionContainer
-        ? descriptionContainer.querySelectorAll("p")
-        : null;
+      const descriptionLines = element ? element.querySelectorAll("p") : null;
       if (descriptionLines) {
         descriptionLines.forEach((line) => {
           let lineText = line.textContent;
