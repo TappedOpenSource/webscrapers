@@ -1,62 +1,45 @@
-import { fcm } from "../firebase";
-import { tokensRef } from "./database";
+import { SLACK_WEBHOOK_URL } from "../firebase";
 
-const foundersIds: string[] = [
-  "8yYVxpQ7cURSzNfBsaBGF7A7kkv2", // Johannes
-  "n4zIL6bOuPTqRC3dtsl6gyEBPQl1", // Ilias
-];
-
-async function notifyFounders({ title, body }: {
-    title: string;
-    body: string;
-}) {
-  foundersIds.map(async (founderId) => {
-    const tokensSnap = await tokensRef
-      .doc(founderId)
-      .collection("tokens")
-      .get();
-
-
-    const tokens: string[] = tokensSnap.docs.map((snap) => snap.id);
-    await Promise.all(tokens.map(async (token) => {
-      try {
-        await fcm.send({
-          token,
-          notification: {
-            title,
-            body,
-          },
-        });
-      } catch (e: any) {
-        console.log(`[!!!] error sending notification to token: ${token} - ${e.message}`);
-        await tokensRef.doc(founderId).collection("tokens").doc(token).delete();
-      }
-    }));
-  });
-}
-
-export async function notifyOnScrapeSuccess({ runId, eventCount }: {
-    runId: string;
-    eventCount: number;
+export async function notifyOnScrapeSuccess({
+  runId,
+  eventCount,
+}: {
+  runId: string;
+  eventCount: number;
 }) {
   if (eventCount === 0) {
-    await notifyFounders({
-      title: "jungle room scrape success",
-      body: `no new events in scrape run ${runId}`,
+    await slackNotification({
+      message: `no new events in scrape run ${runId} - ${new Date()}`,
     });
   }
 
-  await notifyFounders({
-    title: "jungle room scrape success",
-    body: `scrape run ${runId} succeeded with ${eventCount} new events`,
+  await slackNotification({
+    message: `scrape run ${runId} succeeded with ${eventCount} new events - ${new Date()}`,
   });
 }
 
-export async function notifyOnScrapeFailure({ error }: {
-    error: string;
-}) {
-  await notifyFounders({
-    title: "jungle room scrape failure",
-    body: `most recent scrape failed with error: ${error}`,
+export async function notifyOnScrapeFailure({ error }: { error: string }) {
+  await slackNotification({
+    message: `most recent scrape failed with error: ${error} - ${new Date()}`,
   });
+}
+
+async function slackNotification({ message }: { message: string }) {
+  try {
+    const response = await fetch(SLACK_WEBHOOK_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(message),
+    });
+
+    if (response.ok) {
+      console.log("Notification sent to Slack successfully");
+    } else {
+      throw new Error("Slack notification failed to send");
+    }
+  } catch (error) {
+    console.error(error);
+  }
 }
