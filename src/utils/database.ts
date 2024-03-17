@@ -71,7 +71,7 @@ export async function saveScrapeResult(
   console.log(`[+] saving scrape result for ${runId} - ${data.title}`);
 
   const userId = scraper.id;
-  
+
   await rawScrappingRef
     .doc(userId)
     .collection("scrapeRuns")
@@ -220,7 +220,7 @@ export async function createBookingsFromEvent(
     }
 
     const booking: Booking = {
-      ...location,
+      location,
       scraperInfo: {
         scraperId: userId,
         runId,
@@ -237,6 +237,8 @@ export async function createBookingsFromEvent(
       endTime: Timestamp.fromDate(data.endTime),
       timestamp: Timestamp.now(),
       flierUrl: data.flierUrl,
+      eventUrl: data.url,
+      genres: [],
     };
 
     await bookingsRef.doc(booking.id).set(booking);

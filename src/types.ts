@@ -60,4 +60,7 @@ export type Booking = {
   endTime: Timestamp;
   timestamp: Timestamp;
   flierUrl: Option<string>;
+  eventUrl: Option<string>;
+  location: Location;
+  genres: string[];
 };
