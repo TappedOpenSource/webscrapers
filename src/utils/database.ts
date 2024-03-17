@@ -226,7 +226,7 @@ export async function createBookingsFromEvent(
     const requesteeId = await getOrCreateArtist({
       location,
       performerName: artistName,
-      bio: data.description,
+      bio: "",
       genres,
     });
 

@@ -5,6 +5,7 @@ import { endScrapeRun, saveScrapeResult } from "../../utils/database";
 import {
   notifyOnScrapeFailure,
   notifyOnScrapeSuccess,
+  notifyScapeStart,
 } from "../../utils/notifications";
 import { getEventNameFromUrl, getFlierUrl, parsePage } from "./parsing";
 import { config } from "./config";
@@ -64,13 +65,17 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
     const sitemap = new Sitemapper({
       url: metadata.sitemap,
       lastmod,
-      // lastmod: new Date("2024-02-01").getTime(),
+      // lastmod: new Date("2022-12-16").getTime(),
       timeout: 30000,
     });
 
     const { sites } = await sitemap.fetch();
 
     console.log("[+] urls:", sites.length);
+    await notifyScapeStart({
+      runId,
+      eventCount: sites.length,
+    });
 
     // Launch the browser and open a new blank page
     const browser = await puppeteer.launch({
@@ -85,7 +90,9 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
           continue;
         }
 
-        // console.log(`[+] scraped data: ${data.title} - #${data.artists.join('|')}# [${data.startTime.toLocaleString()} - ${data.endTime.toLocaleString()}]`);
+        console.log(
+          `[+] scraped data: ${data.title} - #${data.artists.join("|")}# [${data.startTime.toLocaleString()} - ${data.endTime.toLocaleString()}]`,
+        );
         if (online) {
           await saveScrapeResult(metadata, runId, data);
         }
@@ -120,5 +127,5 @@ if (require.main === module) {
     path: ".env",
   });
 
-  scrape({ online: false });
+  scrape({ online: true });
 }
