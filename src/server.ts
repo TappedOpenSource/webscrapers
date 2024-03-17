@@ -19,7 +19,7 @@ fastify.get("/health", async function handler() {
 });
 
 fastify.get("/version", async function handler() {
-  const metadata = scrapers.map((scraper) => scraper.metadata);
+  const metadata = scrapers.map((scraper) => scraper.config);
   return {
     metadata,
   };
@@ -28,7 +28,7 @@ fastify.get("/version", async function handler() {
 fastify.get("/latest", async function handler() {
   const latestRuns = await Promise.all(
     scrapers.map(async (scraper) => {
-      const latestRun = await getLatestRun(scraper.metadata);
+      const latestRun = await getLatestRun(scraper.config.id);
       return latestRun;
     }),
   );
@@ -43,7 +43,7 @@ export async function startServer() {
     let offset = 0;
     for (const scraper of scrapers) {
       fastify.log.info(
-        `scheduling ${scraper.metadata.name} to ${offset} past midnight`,
+        `scheduling ${scraper.config.name} to ${offset} past midnight`,
       );
       schedule.scheduleJob(`0 ${offset} * * *`, async () => {
         try {

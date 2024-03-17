@@ -1,10 +1,10 @@
 import type { Scraper } from "../../types";
-import { metadata } from "./config";
+import { config } from "./config";
 import { scrape } from "./scraper";
 
 const scraper: Scraper = {
   run: scrape,
-  metadata,
+  config,
 };
 
 export default scraper;

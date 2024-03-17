@@ -1,6 +1,8 @@
 import { Timestamp } from "firebase-admin/firestore";
 import { v4 as uuidv4 } from "uuid";
 import type {
+  UserModel,
+  Option,
   Booking,
   ScrapedEventData,
   RunData,
@@ -16,6 +18,17 @@ export const bookingsRef = db.collection("bookings");
 const reviewsRef = db.collection("reviews");
 export const rawScrappingRef = db.collection("rawScrapeData");
 export const tokensRef = db.collection("tokens");
+
+export async function getUserById(userId: string): Promise<Option<UserModel>> {
+  const userSnap = await usersRef.doc(userId).get();
+  if (!userSnap.exists) {
+    return null;
+  }
+
+  const userData = userSnap.data() as UserModel;
+
+  return userData;
+}
 
 export async function startScrapeRun(
   scraper: ScraperMetadata,
@@ -88,10 +101,8 @@ export async function saveScrapeResult(
   return;
 }
 
-export async function getLatestRun(
-  scraper: ScraperMetadata,
-): Promise<RunData | null> {
-  const userId = scraper.id;
+export async function getLatestRun(scraperId: string): Promise<RunData | null> {
+  const userId = scraperId;
   const querySnap = await rawScrappingRef
     .doc(userId)
     .collection("scrapeRuns")
@@ -126,10 +137,12 @@ export async function getOrCreateArtist({
   location,
   performerName,
   bio,
+  genres,
 }: {
-  location: Location;
   performerName: string;
   bio?: string;
+  genres: string[];
+  location: Option<Location>;
 }): Promise<string | null> {
   console.log(`[+] checking if performer exists: ${performerName}`);
   const artistUsername = sanitizeUsername(performerName);
@@ -161,10 +174,10 @@ export async function getOrCreateArtist({
       occupations: string[];
       profilePicture: string | null;
       unclaimed: true;
-      location: Location;
+      location: Option<Location>;
       performerInfo: {
         genres: string[];
-        label: "None";
+        label: "Independent";
         rating: number;
         reviewCount: number;
       };
@@ -180,8 +193,8 @@ export async function getOrCreateArtist({
       occupations: [],
       profilePicture: null,
       performerInfo: {
-        label: "None",
-        genres: [],
+        label: "Independent",
+        genres: genres,
         rating: 5.0,
         reviewCount: 1,
       },
@@ -206,6 +219,7 @@ export async function createBookingsFromEvent(
 ) {
   const userId = scraper.id;
   const location = scraper.location;
+  const genres = scraper.venue.venueInfo?.genres ?? [];
   data.artists.map(async (artistName) => {
     const id = uuidv4();
     const requesterId = userId;
@@ -213,6 +227,7 @@ export async function createBookingsFromEvent(
       location,
       performerName: artistName,
       bio: data.description,
+      genres,
     });
 
     if (requesteeId === null) {

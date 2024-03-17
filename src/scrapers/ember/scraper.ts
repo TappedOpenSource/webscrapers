@@ -1,13 +1,8 @@
 import puppeteer, { type Browser } from "puppeteer";
 import Sitemapper from "sitemapper";
 import { ScrapedEventData } from "../../types";
-import {
-  endScrapeRun,
-  getLatestRun,
-  saveScrapeResult,
-  startScrapeRun,
-} from "../../utils/database";
-import { metadata } from "./config";
+import { endScrapeRun, saveScrapeResult } from "../../utils/database";
+import { config } from "./config";
 import {
   notifyOnScrapeFailure,
   notifyOnScrapeSuccess,
@@ -22,6 +17,7 @@ import {
 } from "./parsing";
 import { configDotenv } from "dotenv";
 import { v4 as uuidv4 } from "uuid";
+import { initScrape } from "../../utils/startup";
 
 async function scrapeEvent(
   browser: Browser,
@@ -69,7 +65,7 @@ async function scrapeEvent(
     title,
     description,
     ticketPrice: null,
-    doorPrice:null,
+    doorPrice: null,
     artists,
     startTime,
     endTime,
@@ -79,8 +75,7 @@ async function scrapeEvent(
 
 export async function scrape({ online }: { online: boolean }): Promise<void> {
   console.log(`[+] scraping ember music hall [online: ${online}]`);
-  const latestRun = await getLatestRun(metadata);
-  const runId = online ? await startScrapeRun(metadata) : "test-run";
+  const { runId, latestRun, metadata } = await initScrape({ online, config });
 
   try {
     const lateRunStart = latestRun?.startTime ?? null;

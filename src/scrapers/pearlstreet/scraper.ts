@@ -1,13 +1,8 @@
 import puppeteer, { type Browser } from "puppeteer";
 import Sitemapper from "sitemapper";
 import { ScrapedEventData } from "../../types";
-import {
-  endScrapeRun,
-  getLatestRun,
-  saveScrapeResult,
-  startScrapeRun,
-} from "../../utils/database";
-import { metadata } from "./config";
+import { endScrapeRun, saveScrapeResult } from "../../utils/database";
+import { config } from "./config";
 import {
   notifyOnScrapeFailure,
   notifyOnScrapeSuccess,
@@ -22,6 +17,7 @@ import {
 } from "./parsing";
 import { v4 as uuidv4 } from "uuid";
 import { configDotenv } from "dotenv";
+import { initScrape } from "../../utils/startup";
 
 async function scrapeEvent(
   browser: Browser,
@@ -182,8 +178,7 @@ async function scrapeEvent(
 
 export async function scrape({ online }: { online: boolean }): Promise<void> {
   console.log(`[+] scraping pearl street [online: ${online}]`);
-  const latestRun = await getLatestRun(metadata);
-  const runId = online ? await startScrapeRun(metadata) : "test-run";
+  const { latestRun, runId, metadata } = await initScrape({ config, online });
 
   try {
     const lateRunStart = latestRun?.startTime ?? null;

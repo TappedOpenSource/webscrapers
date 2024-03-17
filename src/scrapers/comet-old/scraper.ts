@@ -1,21 +1,17 @@
 import type { Browser } from "puppeteer";
 import puppeteer from "puppeteer";
 import Sitemapper from "sitemapper";
-import { metadata } from "./config";
+import { config } from "./config";
 import { ScrapedEventData } from "../../types";
 import { v4 as uuidv4 } from "uuid";
-import {
-  endScrapeRun,
-  getLatestRun,
-  saveScrapeResult,
-  startScrapeRun,
-} from "../../utils/database";
+import { endScrapeRun, saveScrapeResult } from "../../utils/database";
 import {
   notifyOnScrapeFailure,
   notifyOnScrapeSuccess,
 } from "../../utils/notifications";
 import { configDotenv } from "dotenv";
 import { getArtists, getDate, getEventNameFromUrl, getTime } from "./parsing";
+import { initScrape } from "../../utils/startup";
 
 async function scrapeEvent(
   browser: Browser,
@@ -59,8 +55,7 @@ async function scrapeEvent(
 
 export async function scrape({ online }: { online: boolean }): Promise<void> {
   console.log(`[+] scraping [online: ${online}]`);
-  const latestRun = await getLatestRun(metadata);
-  const runId = online ? await startScrapeRun(metadata) : "test-run";
+  const { latestRun, runId, metadata } = await initScrape({ online, config });
 
   try {
     const lateRunStart = latestRun?.startTime ?? null;

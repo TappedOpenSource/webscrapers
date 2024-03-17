@@ -1,13 +1,8 @@
 import puppeteer, { type Browser } from "puppeteer";
 import Sitemapper from "sitemapper";
 import { ScrapedEventData } from "../../types";
-import {
-  endScrapeRun,
-  getLatestRun,
-  saveScrapeResult,
-  startScrapeRun,
-} from "../../utils/database";
-import { metadata } from "./config";
+import { endScrapeRun, saveScrapeResult } from "../../utils/database";
+import { config } from "./config";
 import {
   notifyOnScrapeFailure,
   notifyOnScrapeSuccess,
@@ -21,6 +16,7 @@ import {
 } from "./parsing";
 import { v4 as uuidv4 } from "uuid";
 import { configDotenv } from "dotenv";
+import { initScrape } from "../../utils/startup";
 
 async function scrapeEvent(
   browser: Browser,
@@ -64,7 +60,10 @@ async function scrapeEvent(
   // Use evaluate to capture text content
   const description = (await parseDescription(page)) ?? "";
 
-  const [ticketPrice, doorPrice] = parseTicketPrice(description) ?? [null, null];
+  const [ticketPrice, doorPrice] = parseTicketPrice(description) ?? [
+    null,
+    null,
+  ];
 
   const { startTimeStr, endTimeStr } = await page.evaluate(() => {
     function getTextContent(element: Element | ChildNode) {
@@ -95,26 +94,26 @@ async function scrapeEvent(
 
     // Define a regex pattern to capture date and time components
 
-    const regexPattern = new RegExp(/(\w+), (\w+)\s*(\d{1,2}), (\d{4})(?: – (\w+), (\w+)\s*(\d{1,2}\s*), (\d{4}))?\s*((\d{1,2}:\d{2}(?:pm|am)))(?: \s*–\s* (\d{1,2}:\d{2}(?:pm|am)))?/,"g")
-    
+    const regexPattern = new RegExp(
+      /(\w+), (\w+)\s*(\d{1,2}), (\d{4})(?: – (\w+), (\w+)\s*(\d{1,2}\s*), (\d{4}))?\s*((\d{1,2}:\d{2}(?:pm|am)))(?: \s*–\s* (\d{1,2}:\d{2}(?:pm|am)))?/,
+      "g",
+    );
+
     // Create an array to store matched groups
     let match;
     const matches = [];
     // Iterate over matches using the regex pattern
     while ((match = regexPattern.exec(dateString)) !== null) {
-      matches.push(match.slice(1))
- 
-      
+      matches.push(match.slice(1));
     }
 
     const amOrPm = String(matches[0][9]).slice(4) === "pm" ? "pm" : "am";
     const defaultEndTime =
       String(Number(matches[0][9].split(":")[0]) + 2) + amOrPm;
 
-      
     const startTimes = [];
     const endTimes = [];
-    
+
     if (matches) {
       startTimes.push(String(matches[0][0]));
       startTimes.push(String(matches[0][1]));
@@ -122,24 +121,22 @@ async function scrapeEvent(
       startTimes.push(String(matches[0][3]));
       startTimes.push(String(matches[0][9]));
       if (matches[0][4]) {
-        endTimes.push(String(matches[0][4]))
-        endTimes.push(String(matches[0][5]))
-        endTimes.push(String(matches[0][6]))
-        endTimes.push(String(matches[0][7]))
-        endTimes.push(String(matches[0][9]))
+        endTimes.push(String(matches[0][4]));
+        endTimes.push(String(matches[0][5]));
+        endTimes.push(String(matches[0][6]));
+        endTimes.push(String(matches[0][7]));
+        endTimes.push(String(matches[0][9]));
       } else {
-        endTimes.push(String(matches[0][0]))
-        endTimes.push(String(matches[0][1]))
-        endTimes.push(String(matches[0][2]))
-        endTimes.push(String(matches[0][3]))
+        endTimes.push(String(matches[0][0]));
+        endTimes.push(String(matches[0][1]));
+        endTimes.push(String(matches[0][2]));
+        endTimes.push(String(matches[0][3]));
         if (matches[0][10]) {
-          endTimes.push(String(matches[0][10]))
+          endTimes.push(String(matches[0][10]));
         } else {
-          endTimes.push(defaultEndTime)
+          endTimes.push(defaultEndTime);
         }
       }
-      
-
     }
 
     return {
@@ -181,8 +178,7 @@ async function scrapeEvent(
 
 export async function scrape({ online }: { online: boolean }): Promise<void> {
   console.log(`[+] scraping golden pony [online: ${online}]`);
-  const latestRun = await getLatestRun(metadata);
-  const runId = online ? await startScrapeRun(metadata) : "test-run";
+  const { latestRun, runId, metadata } = await initScrape({ config, online });
 
   try {
     const lateRunStart = latestRun?.startTime ?? null;
