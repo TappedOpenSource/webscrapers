@@ -8,6 +8,7 @@
     "build": "tsc",
     "scrape:jungleroom": "npm run build && node dist/scrapers/jungleroom/scraper.js",
     "scrape:oldtown": "npm run build && node dist/scrapers/oldtown/scraper.js",
+    "scrape:songbyrd": "npm run build && node dist/scrapers/songbyrd/scraper.js",
     "scrape:pearlstreet": "npm run build && node dist/scrapers/pearlstreet/scraper.js",
     "scrape:goldenpony": "npm run build && node dist/scrapers/goldenpony/scraper.js",
     "scrape:ember": "npm run build && node dist/scrapers/ember/scraper.js",
