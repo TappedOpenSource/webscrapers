@@ -47,7 +47,7 @@ async function scrapeEvent(
   // Set screen size
   await page.setViewport({ width: 1080, height: 1024 });
 
-  const element = await page.waitForSelector(".event-title");
+  const element = await page.waitForSelector("body > div.containerRight > section > div > div > div.col.l7 > div.headings > h5");
 
   if (!element) {
     console.log("[-] element not found");
@@ -59,7 +59,7 @@ async function scrapeEvent(
   ).trim();
   const description = (await parseDescription(page)) ?? "";
 
-  const priceContainer = await page.waitForSelector(".tw-price");
+  const priceContainer = await page.waitForSelector("body > div.containerRight > section > div > div > div.col.l7 > div.shortDesc > p:nth-child(1)");
 
   if (!priceContainer) {
     console.log("[-] price not found");
@@ -92,8 +92,16 @@ async function scrapeEvent(
       return text;
     }
 
-    const container = document.querySelector(".tw-date-time");
-    if (container === null) {
+    const timeContainer = document.querySelector("body > div.containerRight > section > div > div > div.col.l7 > div.shortDesc > p:nth-child(1)");
+    if (timeContainer === null) {
+      console.log("[-] container not found");
+      return {
+        startTime: null,
+        endTime: null,
+      };
+    }
+    const dateContainer = document.querySelector(".event-date");
+    if (dateContainer === null) {
       console.log("[-] container not found");
       return {
         startTime: null,
@@ -101,42 +109,61 @@ async function scrapeEvent(
       };
     }
 
-    const dateString = getTextContent(container).trim();
-    // Define a regex pattern to capture date and time components
-    const regexPattern =
-      /(\w+)\s+(\w+)\s+(\w+)\s+(\d{1,2}:\d{2}\s+(?:am|pm))/gm;
 
+    const timeString = getTextContent(timeContainer).trim();
+    const dateString = getTextContent(dateContainer).trim();
+
+    //const dateTimeString = timeString + " " + dateString
+
+    
+    // Define a regex pattern to capture date and time components
+    const timeRegexPattern =
+      /(\d+)(?=pm)/gm;
+    const dateRegexPattern = 
+      /(\b\d{1,2}\b\s+\b\w+\b)/gm;
     // Create an array to store matched groups
     let match;
     const matches = [];
 
     // Iterate over matches using the regex pattern
-    while ((match = regexPattern.exec(dateString)) !== null) {
+    while ((match = timeRegexPattern.exec(timeString)) !== null) {
       matches.push(match.slice(1));
     }
+    while((match = dateRegexPattern.exec(dateString)) !== null) {
+      matches.push(match.slice(1))
+    }
+    const month = matches[2][0]
+
+    const splitMonth = month.split(/\s+/)
+
+
 
     const startTime = [];
     const endTime = [];
     const currDate = new Date();
     const year = String(currDate.getFullYear());
-
-    if (matches[0]) {
-      const monthString = String(matches[0][1]);
-      const numberDayString = String(matches[0][2]);
-      const startTimeString = String(matches[0][3]);
-      const splitTimeString = startTimeString.split(":");
-      const endTimeString =
-        String(Number(splitTimeString[0]) + 2) + ":" + splitTimeString[1];
-
-      startTime.push(monthString);
-      startTime.push(numberDayString);
-      startTime.push(year);
-      startTime.push(startTimeString);
-
+    if (matches[2][0]) {
+      const monthString = String(splitMonth[1])
+      const dayString = String(splitMonth[0]);
+      startTime.push(monthString)
+      startTime.push(dayString)
+      
+      startTime.push(year)
       endTime.push(monthString);
-      endTime.push(numberDayString);
+      endTime.push(dayString);
       endTime.push(year);
-      endTime.push(endTimeString);
+      if (matches[1][0]) {
+        const showTimeString = String(matches[1][0]);
+        
+        startTime.push(showTimeString + ":00PM")
+        const endTimeString =
+        String(Number(showTimeString) + 2) + ":00PM";
+        endTime.push(endTimeString);
+        if (matches[0][0]) {
+          const doorTimeString = String(matches[0][0]);
+          console.log(doorTimeString)
+        }
+      }
     }
 
     return {
@@ -179,28 +206,33 @@ async function scrapeEvent(
 export async function scrape({ online }: { online: boolean }): Promise<void> {
   console.log(`[+] scraping old town [online: ${online}]`);
   const { latestRun, runId, metadata } = await initScrape({ config, online });
-
+  console.log(metadata)
   try {
     const lateRunStart = latestRun?.startTime ?? null;
     const lastmod = lateRunStart?.getTime();
+    console.log(lastmod);
 
     const sitemap = new Sitemapper({
       url: metadata.sitemap,
-      lastmod,
+  
       timeout: 30000,
     });
 
     const { sites } = await sitemap.fetch();
+    //const sites = ["https://otpsteamboat.com/events/aqueous-at-otp/"];
 
     console.log("[+] old town urls:", sites.length);
+    
     await notifyScapeStart({
       runId,
       eventCount: sites.length,
     });
+    
 
     // Launch the browser and open a new blank page
     const browser = await puppeteer.launch({
       headless: "new",
+      //headless: false,
     });
 
     for (const oldTownUrl of sites) {
@@ -248,5 +280,5 @@ if (require.main === module) {
     path: ".env",
   });
 
-  scrape({ online: false });
+  scrape({ online: true });
 }

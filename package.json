@@ -7,6 +7,7 @@
     "prepare": "husky",
     "build": "tsc",
     "scrape:jungleroom": "npm run build && node dist/scrapers/jungleroom/scraper.js",
+    "scrape:oldtown": "npm run build && node dist/scrapers/oldtown/scraper.js",
     "scrape:pearlstreet": "npm run build && node dist/scrapers/pearlstreet/scraper.js",
     "scrape:goldenpony": "npm run build && node dist/scrapers/goldenpony/scraper.js",
     "scrape:ember": "npm run build && node dist/scrapers/ember/scraper.js",
@@ -35,6 +36,7 @@
     "node-schedule": "^2.1.1",
     "puppeteer": "^21.7.0",
     "sitemapper": "^3.2.8",
+    "typescript-eslint": "^7.3.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

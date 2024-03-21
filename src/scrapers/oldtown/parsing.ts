@@ -8,7 +8,7 @@ export function getEventNameFromUrl(url: string) {
 
   // Regular Expression to capture the event name after /events-list/year/month/day         
   // It will not match if there's only /events-list with nothing after        
-  const eventNameRegex = /\/tm-event\/(.+)$/;
+  const eventNameRegex = /\/events\/(.+)$/;
 
   // Apply the regex and return the captured group if matched, otherwise null
   const match = pathname.match(eventNameRegex);
@@ -19,18 +19,17 @@ export function getEventNameFromUrl(url: string) {
 export function parseTicketPrice(priceContent: string) {
   let ticketPrice;
   let doorPrice;
-  if (priceContent.includes("-")) {
-    const [ticketString, doorString]  = priceContent.split("-");
-    
-    ticketPrice = Number(ticketString.trim().slice(1));
-    doorPrice = Number(doorString.trim().slice(1))
-    
-  } else {
-    if (priceContent !== "") {
-      ticketPrice = Number(priceContent.trim().slice(1));
-
-      doorPrice = ticketPrice;
-
+  const stringList = priceContent.split(" ")
+  const prices = stringList.filter(s => 
+    s.includes("$")
+  )
+  if (prices.length !== 0) {
+    if (prices.length == 1) {
+      ticketPrice = Number(prices[0].trim().slice(1));
+      doorPrice = ticketPrice
+    } else {
+      ticketPrice = Number(prices[0].trim().slice(1));
+      doorPrice = Number(prices[1].trim().slice(1));
     }
   }
   return [ticketPrice, doorPrice]
@@ -95,7 +94,7 @@ export function parseTimes(startTimeStr: string[], endTimeStr: string[]) {
       year,
       month,
       day,
-      monthStr.endsWith("PM")
+      timeStr.endsWith("PM")
         ? parseInt(timeStr.split(":")[0]) + 12
         : parseInt(timeStr.split(":")[0]),
       parseInt(timeStr.split(":")[1])
@@ -142,7 +141,7 @@ export async function parseArtists(title: string): Promise<string[]> {
     can you parse this string into an array with the names of all the musicians. 
     the website this was copied from uses all kind of delimiters such as "&" "W." "w/", "W/" or "," 
     but also longer natural language delimiters like "with support from". 
-    These are mostly rock, country, folk, soul, bluegrass, rhythm and blues musicians so things like numbers and symbols are not part of the name 
+    The band names are unique so don't include names that might describe the event or location like "Nights" or "OTP".
     `);
   const msg = new HumanMessage(`
                     the string: "${title}"
