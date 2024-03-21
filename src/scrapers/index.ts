@@ -5,6 +5,7 @@ import GoldenPony from "./goldenpony";
 import EmberScraper from "./ember";
 import WondervilleScraper from "./wonderville";
 import PearlStreetScraper from "./pearlstreet";
+import SongbyrdScraper from "./songbyrd";
 
 export const scrapers: Scraper[] = [
   JungleRoomScraper,
@@ -12,4 +13,5 @@ export const scrapers: Scraper[] = [
   GoldenPony,
   WondervilleScraper,
   PearlStreetScraper,
+  SongbyrdScraper,
 ];
