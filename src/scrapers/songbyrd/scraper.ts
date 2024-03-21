@@ -7,51 +7,17 @@ import {
   notifyOnScrapeSuccess,
   notifyScapeStart,
 } from "../../utils/notifications";
-import { getEventNameFromUrl, getFlierUrl, parsePage } from "./parsing";
 import { config } from "./config";
 import { configDotenv } from "dotenv";
-import { v4 as uuidv4 } from "uuid";
+// import { v4 as uuidv4 } from "uuid";
 import { initScrape } from "../../utils/startup";
 
 async function scrapeEvent(
   browser: Browser,
   eventUrl: string,
 ): Promise<ScrapedEventData | null> {
-  const eventName = getEventNameFromUrl(eventUrl);
-
-  if (!eventName) {
-    console.log("[-] event name not found: ", eventUrl);
-    return null;
-  }
-
-  console.log("[+] scraping event:", eventName);
-  const page = await browser.newPage();
-  await page.goto(eventUrl);
-  await page.setViewport({ width: 1080, height: 1024 });
-
-  const id = uuidv4();
-  const flierUrl = await getFlierUrl(page);
-  const { isMusicEvent, title, description, startTime, endTime, artists } =
-    await parsePage(page);
-
-  if (!isMusicEvent) {
-    console.log("[-] not a music event");
-    return null;
-  }
-
-  return {
-    id,
-    url: eventUrl,
-    title,
-    description,
-    ticketPrice: null,
-    doorPrice: null,
-    artists,
-    startTime,
-    endTime,
-    flierUrl,
-    isMusicEvent,
-  };
+  console.log({ browser, eventUrl });
+  return null;
 }
 
 export async function scrape({ online }: { online: boolean }): Promise<void> {
