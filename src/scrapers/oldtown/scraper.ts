@@ -47,7 +47,7 @@ async function scrapeEvent(
   // Set screen size
   await page.setViewport({ width: 1080, height: 1024 });
 
-  const element = await page.waitForSelector("body > div.containerRight > section > div > div > div.col.l7 > div.headings > h5");
+  const element = await page.waitForSelector(".headings > h5");
 
   if (!element) {
     console.log("[-] element not found");
@@ -59,126 +59,122 @@ async function scrapeEvent(
   ).trim();
   const description = (await parseDescription(page)) ?? "";
 
-  const priceContainer = await page.waitForSelector("body > div.containerRight > section > div > div > div.col.l7 > div.shortDesc > p:nth-child(1)");
+  // null if price string is empty
+  const [ticketPrice, doorPrice] = parseTicketPrice(description);
 
-  if (!priceContainer) {
-    console.log("[-] price not found");
-    return null;
+  const timeRegexPattern = /\b(\d{1,2}(?::\d{2})?)(?:a|p|am|pm)?\b/gm;
+
+  const dateRegexPattern = /(\b\d{1,2}\b\s+\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b)/gm
+
+
+  // Create an array to store matched groups
+  let match;
+  const timeMatches: string[] = [];
+  const dateMatches: string[] = [];
+  const descriptionParts = description.split("\n")
+  const monthRegex = /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/;
+  const timePRegex = /\b\d+p\b/gm;
+  let timeParts = ""
+  let dateParts = ""
+  descriptionParts.forEach(string => {
+
+    if (string.includes("pm") || string.includes("am ") || string.includes("Doors") || string.includes("doors")|| (string.includes(":") && string.includes("-")) ) {
+      timeParts += string
+      if (timePRegex.test(string)) {
+        timeParts += string
+      }
+
+    }
+    if (monthRegex.test(string)) {
+      dateParts += string
+    }
+      
+  })
+    
+  // Iterate over matches using the regex pattern
+  while ((match = timeRegexPattern.exec(timeParts)) !== null) {
+    timeMatches.push(match[1]);
+  }
+  while((match = dateRegexPattern.exec(dateParts)) !== null) {
+    dateMatches.push(match[1])
   }
 
-  const price = (
-    (await page.evaluate(
-      (priceContainer) => priceContainer.textContent,
-      priceContainer,
-    )) ?? ""
-  ).trim();
-
-  // null if price string is empty
-  const [ticketPrice, doorPrice] = parseTicketPrice(price);
-
-  const { startTimeStr, endTimeStr } = await page.evaluate(() => {
-    function getTextContent(element: Element | ChildNode) {
-      let text = "";
-
-      // Iterate over child nodes
-      element.childNodes.forEach((node) => {
-        if (node.nodeType === Node.TEXT_NODE) {
-          text += ` ${node.textContent} `;
-        } else if (node.nodeType === Node.ELEMENT_NODE) {
-          text += ` ${getTextContent(node)} `;
-        }
-      });
-
-      return text;
+  const filteredTimeMatches = timeMatches.filter(match => {
+    const index = description.indexOf(match);
+    if (index > 0) {
+      const prevChar = description.charAt(index - 1);
+      const nextChar = description.charAt(index + 1);
+      return (nextChar !== "+" && prevChar !== "$" && match !== "21");
     }
-
-    const timeContainer = document.querySelector("body > div.containerRight > section > div > div > div.col.l7 > div.shortDesc > p:nth-child(1)");
-    if (timeContainer === null) {
-      console.log("[-] container not found");
-      return {
-        startTime: null,
-        endTime: null,
-      };
-    }
-    const dateContainer = document.querySelector(".event-date");
-    if (dateContainer === null) {
-      console.log("[-] container not found");
-      return {
-        startTime: null,
-        endTime: null,
-      };
-    }
-
-
-    const timeString = getTextContent(timeContainer).trim();
-    const dateString = getTextContent(dateContainer).trim();
-
-    //const dateTimeString = timeString + " " + dateString
-
-    
-    // Define a regex pattern to capture date and time components
-    const timeRegexPattern =
-      /(\d+)(?=pm)/gm;
-    const dateRegexPattern = 
-      /(\b\d{1,2}\b\s+\b\w+\b)/gm;
-    // Create an array to store matched groups
-    let match;
-    const matches = [];
-
-    // Iterate over matches using the regex pattern
-    while ((match = timeRegexPattern.exec(timeString)) !== null) {
-      matches.push(match.slice(1));
-    }
-    while((match = dateRegexPattern.exec(dateString)) !== null) {
-      matches.push(match.slice(1))
-    }
-    const month = matches[2][0]
-
-    const splitMonth = month.split(/\s+/)
-
-
-
-    const startTime = [];
-    const endTime = [];
-    const currDate = new Date();
-    const year = String(currDate.getFullYear());
-    if (matches[2][0]) {
-      const monthString = String(splitMonth[1])
-      const dayString = String(splitMonth[0]);
-      startTime.push(monthString)
-      startTime.push(dayString)
-      
-      startTime.push(year)
-      endTime.push(monthString);
-      endTime.push(dayString);
-      endTime.push(year);
-      if (matches[1][0]) {
-        const showTimeString = String(matches[1][0]);
-        
-        startTime.push(showTimeString + ":00PM")
-        const endTimeString =
-        String(Number(showTimeString) + 2) + ":00PM";
-        endTime.push(endTimeString);
-        if (matches[0][0]) {
-          const doorTimeString = String(matches[0][0]);
-          console.log(doorTimeString)
-        }
-      }
-    }
-
-    return {
-      startTimeStr: startTime ?? null,
-      endTimeStr: endTime ?? null,
-    };
+    return true;
   });
+
+
+  const month = dateMatches[0]
+  const splitMonth = month.split(/\s+/)
+
+  const startTimeList = []
+  const endTimeList = []
+  const currDate = new Date();
+  const year = String(currDate.getFullYear());
+  if (filteredTimeMatches && dateMatches) {
+    const monthString = String(splitMonth[1])
+    const dayString = String(splitMonth[0]);
+    startTimeList.push(monthString)
+    startTimeList.push(dayString)
+      
+    startTimeList.push(year)
+    endTimeList.push(monthString);
+    endTimeList.push(dayString);
+    endTimeList.push(year);
+    if (timeMatches[0]) {
+        
+      const timeMatchesLength = filteredTimeMatches.length;
+      let showTimeString;
+      let endTimeString;
+      if (timeMatchesLength > 2) {
+        showTimeString = String(filteredTimeMatches[0]);
+        const showTimeValue = Number(showTimeString.split(":")[0])
+        const lastTime = Number(filteredTimeMatches[timeMatchesLength - 1].split(":")[0]);
+        const endTime = lastTime < showTimeValue ? filteredTimeMatches[timeMatchesLength - 2] : filteredTimeMatches[timeMatchesLength - 1];
+
+
+        if (endTime.includes(":")) {
+          endTimeString = String(endTime) + "PM"
+        } else {
+          endTimeString = String(lastTime) + ":00PM";
+        }
+          
+      } else {
+        showTimeString = String(filteredTimeMatches[1]);
+          
+        endTimeString = String(Number(showTimeString.split(":")[0]) + 2) 
+        if (endTimeString.includes(":")) {
+          endTimeString = String(endTimeString) + "PM"
+        } else {
+          endTimeString = String(endTimeString) + ":00PM";
+        }
+
+        //const doorTimeString = String(filteredTimeMatches[0]);
+
+          
+      }
+      startTimeList.push(showTimeString + ":00PM")
+      endTimeList.push(endTimeString);
+        
+    }
+  }
+    
+
+  const startTimeStr = startTimeList;
+  const endTimeStr = endTimeList;
 
   if (!startTimeStr || !endTimeStr) {
     console.log("[-] start or end time not found");
     return null;
   }
-
+ 
   const { startTime, endTime } = parseTimes(startTimeStr, endTimeStr);
-
   if (!startTime || !endTime) {
     console.log(`[-] start or end time not found [${startTime}, ${endTime}]`);
     return null;
@@ -206,7 +202,6 @@ async function scrapeEvent(
 export async function scrape({ online }: { online: boolean }): Promise<void> {
   console.log(`[+] scraping old town [online: ${online}]`);
   const { latestRun, runId, metadata } = await initScrape({ config, online });
-  console.log(metadata)
   try {
     const lateRunStart = latestRun?.startTime ?? null;
     const lastmod = lateRunStart?.getTime();
@@ -219,10 +214,8 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
     });
 
     const { sites } = await sitemap.fetch();
-    //const sites = ["https://otpsteamboat.com/events/aqueous-at-otp/"];
 
     console.log("[+] old town urls:", sites.length);
-    
     await notifyScapeStart({
       runId,
       eventCount: sites.length,
@@ -232,7 +225,6 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
     // Launch the browser and open a new blank page
     const browser = await puppeteer.launch({
       headless: "new",
-      //headless: false,
     });
 
     for (const oldTownUrl of sites) {
@@ -280,5 +272,5 @@ if (require.main === module) {
     path: ".env",
   });
 
-  scrape({ online: true });
+  scrape({ online: false });
 }

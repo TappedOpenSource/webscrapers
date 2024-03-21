@@ -18,7 +18,7 @@ const credential = production
   : cert(require("../credentials.json"));
 
 const app = initializeApp({
-  projectId: "golden-pony-scraper",
+  projectId: "in-the-loop-306520",
   credential,
 });
 const auth = getAuth(app);

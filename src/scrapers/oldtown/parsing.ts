@@ -16,14 +16,13 @@ export function getEventNameFromUrl(url: string) {
   return match ? match[1] : null;
 }
 
-export function parseTicketPrice(priceContent: string) {
+export function parseTicketPrice(description: string) {
   let ticketPrice;
   let doorPrice;
-  const stringList = priceContent.split(" ")
-  const prices = stringList.filter(s => 
-    s.includes("$")
-  )
-  if (prices.length !== 0) {
+
+  const priceRegex = /\$\d+/g;
+  const prices = description.match(priceRegex) ? description.match(priceRegex) : []
+  if (prices && prices.length !== 0 ) {
     if (prices.length == 1) {
       ticketPrice = Number(prices[0].trim().slice(1));
       doorPrice = ticketPrice
@@ -52,7 +51,7 @@ export async function parseDescription(page: Page): Promise<string | null> {
       return text;
     }
 
-    const container = document.querySelector(".tw-description");
+    const container = document.querySelector(".shortDesc");
 
     if (!container) {
       return "";
