@@ -13,6 +13,7 @@ import {
   parseTicketPrice,
   parseDescription,
   parseDates,
+  getFlierUrl,
 } from "./parsing";
 import { config } from "./config";
 import { configDotenv } from "dotenv";
@@ -66,7 +67,8 @@ async function scrapeEvent(
   const [ticketPrice, doorPrice] = parseTicketPrice(priceText);
   const { startTime, endTime } = await parseDates(page);
 
-  const artists = await parseArtists(title);
+  const artists = await parseArtists(title, description);
+  const flierUrl = await getFlierUrl(page);
 
   const id = uuidv4();
 
@@ -81,7 +83,7 @@ async function scrapeEvent(
     artists,
     startTime,
     endTime,
-    flierUrl: null,
+    flierUrl,
   };
 }
 
@@ -122,7 +124,7 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
         }
 
         console.log(
-          `[+] scraped data: ${data.title} - #${data.artists.join("|")}# [${data.startTime.toLocaleString()} - ${data.endTime.toLocaleString()}]`,
+          `[+] \n- ${data.title}\n - ${data.artists.join(",")}\n - [${data.startTime.toLocaleString()} - ${data.endTime.toLocaleString()}]\n- ${data.flierUrl}`,
         );
         if (online) {
           await saveScrapeResult(metadata, runId, data);

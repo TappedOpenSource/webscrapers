@@ -101,7 +101,10 @@ export async function parseDates(page: Page) {
   };
 }
 
-export async function parseArtists(title: string): Promise<string[]> {
+export async function parseArtists(
+  title: string,
+  description: string,
+): Promise<string[]> {
   const parser = new JsonOutputFunctionsParser();
   const extractionFunctionSchema = {
     name: "extractor",
@@ -122,7 +125,9 @@ export async function parseArtists(title: string): Promise<string[]> {
     },
   };
 
-  const llm = new ChatOpenAI({});
+  const llm = new ChatOpenAI({
+    modelName: "gpt-3.5-turbo",
+  });
   const runnable = llm
     .bind({
       functions: [extractionFunctionSchema],
@@ -131,13 +136,13 @@ export async function parseArtists(title: string): Promise<string[]> {
     .pipe(parser);
 
   const systemMsg = new SystemMessage(`
-    can you parse this string into an array with the names of all the musicians.
-    the website this was copied from uses all kind of delimiters such as "&" "W." "w/", "W/" or ","
-    but also longer natural language delimiters like "with support from".
-    The band names are unique so don't include names that might describe the event or location like "Nights" or "OTP".
+    you're job is to extract the artist names from the title and description of an event.'
+    The band names are unique so don't include names that might describe the event or location like "Nights", "OTP", "SOLD OUT", etc"
     `);
   const msg = new HumanMessage(`
-                    the string: "${title}"
+                    the title: "${title}"
+
+                    the description: "${description}"
                 `);
   const res = (await runnable.invoke([systemMsg, msg])) as {
     artistNames?: string[];
@@ -160,3 +165,20 @@ export const sanitizeUsername = (artistName: string) => {
 
   return username;
 };
+
+export async function getFlierUrl(page: Page) {
+  try {
+    return await page.evaluate(() => {
+      const img = document.querySelector(".wpem-event-single-image-rmt img");
+      if (!img) {
+        return null;
+      }
+
+      const src = img.getAttribute("src");
+      return src;
+    });
+  } catch (error) {
+    console.error("[-] error getting flier url", error);
+    return null;
+  }
+}
