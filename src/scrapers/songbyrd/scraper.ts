@@ -160,5 +160,5 @@ if (require.main === module) {
     path: ".env",
   });
 
-  scrape({ online: false });
+  scrape({ online: true });
 }
