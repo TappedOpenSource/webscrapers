@@ -1,7 +1,7 @@
 import { ScraperConfig } from "../../types";
 
 export const config: ScraperConfig = {
-  id: "aTOmu1pdEuE7atxQSeJL",
+  id: "1OTMp6vknsPsYYdwsegiBKil9cC2",
   name: "old-town",
   url: "https://otpsteamboat.com/music-events/",
   sitemap: "https://otpsteamboat.com/events-sitemap.xml",

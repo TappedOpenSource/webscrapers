@@ -14,6 +14,7 @@ import {
   parseTicketPrice,
   parseDescription,
   parseTimes,
+  parseFlierUrl,
 } from "./parsing";
 import { v4 as uuidv4 } from "uuid";
 import { configDotenv } from "dotenv";
@@ -33,18 +34,7 @@ async function scrapeEvent(
   console.log("[+] scraping event:", eventName);
 
   const page = await browser.newPage();
-  // page.on('console', async (msg) => {
-  //     const msgArgs = msg.args();
-  //     for (let i = 0; i < msgArgs.length; ++i) {
-  //         const val = await msgArgs[i].jsonValue();
-  //         console.log(`[PAGE] ${val}`);
-  //     }
-  // });
-
-  // Navigate the page to a URL
   await page.goto(eventUrl);
-
-  // Set screen size
   await page.setViewport({ width: 1080, height: 1024 });
 
   const element = await page.waitForSelector(".headings > h5");
@@ -64,107 +54,107 @@ async function scrapeEvent(
 
   const timeRegexPattern = /\b(\d{1,2}(?::\d{2})?)(?:a|p|am|pm)?\b/gm;
 
-  const dateRegexPattern = /(\b\d{1,2}\b\s+\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b)/gm
-
+  const dateRegexPattern =
+    /(\b\d{1,2}\b\s+\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b)/gm;
 
   // Create an array to store matched groups
   let match;
   const timeMatches: string[] = [];
   const dateMatches: string[] = [];
-  const descriptionParts = description.split("\n")
+  const descriptionParts = description.split("\n");
   const monthRegex = /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/;
   const timePRegex = /\b\d+p\b/gm;
-  let timeParts = ""
-  let dateParts = ""
-  descriptionParts.forEach(string => {
-
-    if (string.includes("pm") || string.includes("am ") || string.includes("Doors") || string.includes("doors")|| (string.includes(":") && string.includes("-")) ) {
-      timeParts += string
+  let timeParts = "";
+  let dateParts = "";
+  descriptionParts.forEach((string) => {
+    if (
+      string.includes("pm") ||
+      string.includes("am ") ||
+      string.includes("Doors") ||
+      string.includes("doors") ||
+      (string.includes(":") && string.includes("-"))
+    ) {
+      timeParts += string;
       if (timePRegex.test(string)) {
-        timeParts += string
+        timeParts += string;
       }
-
     }
     if (monthRegex.test(string)) {
-      dateParts += string
+      dateParts += string;
     }
-      
-  })
-    
+  });
+
   // Iterate over matches using the regex pattern
   while ((match = timeRegexPattern.exec(timeParts)) !== null) {
     timeMatches.push(match[1]);
   }
-  while((match = dateRegexPattern.exec(dateParts)) !== null) {
-    dateMatches.push(match[1])
+  while ((match = dateRegexPattern.exec(dateParts)) !== null) {
+    dateMatches.push(match[1]);
   }
 
-  const filteredTimeMatches = timeMatches.filter(match => {
+  const filteredTimeMatches = timeMatches.filter((match) => {
     const index = description.indexOf(match);
     if (index > 0) {
       const prevChar = description.charAt(index - 1);
       const nextChar = description.charAt(index + 1);
-      return (nextChar !== "+" && prevChar !== "$" && match !== "21");
+      return nextChar !== "+" && prevChar !== "$" && match !== "21";
     }
     return true;
   });
 
+  const month = dateMatches[0];
+  const splitMonth = month.split(/\s+/);
 
-  const month = dateMatches[0]
-  const splitMonth = month.split(/\s+/)
-
-  const startTimeList = []
-  const endTimeList = []
+  const startTimeList = [];
+  const endTimeList = [];
   const currDate = new Date();
   const year = String(currDate.getFullYear());
   if (filteredTimeMatches && dateMatches) {
-    const monthString = String(splitMonth[1])
+    const monthString = String(splitMonth[1]);
     const dayString = String(splitMonth[0]);
-    startTimeList.push(monthString)
-    startTimeList.push(dayString)
-      
-    startTimeList.push(year)
+    startTimeList.push(monthString);
+    startTimeList.push(dayString);
+
+    startTimeList.push(year);
     endTimeList.push(monthString);
     endTimeList.push(dayString);
     endTimeList.push(year);
     if (timeMatches[0]) {
-        
       const timeMatchesLength = filteredTimeMatches.length;
       let showTimeString;
       let endTimeString;
       if (timeMatchesLength > 2) {
         showTimeString = String(filteredTimeMatches[0]);
-        const showTimeValue = Number(showTimeString.split(":")[0])
-        const lastTime = Number(filteredTimeMatches[timeMatchesLength - 1].split(":")[0]);
-        const endTime = lastTime < showTimeValue ? filteredTimeMatches[timeMatchesLength - 2] : filteredTimeMatches[timeMatchesLength - 1];
-
+        const showTimeValue = Number(showTimeString.split(":")[0]);
+        const lastTime = Number(
+          filteredTimeMatches[timeMatchesLength - 1].split(":")[0],
+        );
+        const endTime =
+          lastTime < showTimeValue
+            ? filteredTimeMatches[timeMatchesLength - 2]
+            : filteredTimeMatches[timeMatchesLength - 1];
 
         if (endTime.includes(":")) {
-          endTimeString = String(endTime) + "PM"
+          endTimeString = String(endTime) + "PM";
         } else {
           endTimeString = String(lastTime) + ":00PM";
         }
-          
       } else {
         showTimeString = String(filteredTimeMatches[1]);
-          
-        endTimeString = String(Number(showTimeString.split(":")[0]) + 2) 
+
+        endTimeString = String(Number(showTimeString.split(":")[0]) + 2);
         if (endTimeString.includes(":")) {
-          endTimeString = String(endTimeString) + "PM"
+          endTimeString = String(endTimeString) + "PM";
         } else {
           endTimeString = String(endTimeString) + ":00PM";
         }
 
         //const doorTimeString = String(filteredTimeMatches[0]);
-
-          
       }
-      startTimeList.push(showTimeString + ":00PM")
+      startTimeList.push(showTimeString + ":00PM");
       endTimeList.push(endTimeString);
-        
     }
   }
-    
 
   const startTimeStr = startTimeList;
   const endTimeStr = endTimeList;
@@ -173,7 +163,7 @@ async function scrapeEvent(
     console.log("[-] start or end time not found");
     return null;
   }
- 
+
   const { startTime, endTime } = parseTimes(startTimeStr, endTimeStr);
   if (!startTime || !endTime) {
     console.log(`[-] start or end time not found [${startTime}, ${endTime}]`);
@@ -181,6 +171,7 @@ async function scrapeEvent(
   }
 
   const artists = await parseArtists(title);
+  const flierUrl = await parseFlierUrl(page);
 
   const id = uuidv4();
 
@@ -195,7 +186,7 @@ async function scrapeEvent(
     artists,
     startTime,
     endTime,
-    flierUrl: null,
+    flierUrl,
   };
 }
 
@@ -209,7 +200,7 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
 
     const sitemap = new Sitemapper({
       url: metadata.sitemap,
-  
+
       timeout: 30000,
     });
 
@@ -220,7 +211,6 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
       runId,
       eventCount: sites.length,
     });
-    
 
     // Launch the browser and open a new blank page
     const browser = await puppeteer.launch({
@@ -235,9 +225,9 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
           continue;
         }
 
-        // console.log(
-        //   `[+] scraped data: ${data.title} - #${data.artists.join("|")}# [${data.startTime.toLocaleString()} - ${data.endTime.toLocaleString()}]`,
-        // );
+        console.log(
+          `[+] \n- ${data.title}\n - ${data.artists.join(",")}\n - [${data.startTime.toLocaleString()} - ${data.endTime.toLocaleString()}]\n- ${data.flierUrl}`,
+        );
         if (online) {
           await saveScrapeResult(metadata, runId, data);
         }
