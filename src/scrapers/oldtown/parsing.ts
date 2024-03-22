@@ -1,4 +1,4 @@
-import type { Page } from "puppeteer";
+import { Page } from "puppeteer";
 import { ChatOpenAI } from "@langchain/openai";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { JsonOutputFunctionsParser } from "langchain/output_parsers";
@@ -8,7 +8,7 @@ export function getEventNameFromUrl(url: string) {
 
   // Regular Expression to capture the event name after /events-list/year/month/day         
   // It will not match if there's only /events-list with nothing after        
-  const eventNameRegex = /\/event\/(.+)$/;
+  const eventNameRegex = /\/events\/(.+)$/;
 
   // Apply the regex and return the captured group if matched, otherwise null
   const match = pathname.match(eventNameRegex);
@@ -16,12 +16,12 @@ export function getEventNameFromUrl(url: string) {
   return match ? match[1] : null;
 }
 
-export function parseTicketPrice(priceText: string) {
+export function parseTicketPrice(description: string) {
   let ticketPrice;
   let doorPrice;
 
   const priceRegex = /\$\d+/g;
-  const prices = priceText.match(priceRegex) ? priceText.match(priceRegex) : []
+  const prices = description.match(priceRegex) ? description.match(priceRegex) : []
   if (prices && prices.length !== 0 ) {
     if (prices.length == 1) {
       ticketPrice = Number(prices[0].trim().slice(1));
@@ -31,7 +31,7 @@ export function parseTicketPrice(priceText: string) {
       doorPrice = Number(prices[1].trim().slice(1));
     }
   }
-  return [ticketPrice ?? null, doorPrice ?? null]
+  return [ticketPrice, doorPrice]
 }
 
 export async function parseDescription(page: Page): Promise<string | null> {
@@ -51,7 +51,7 @@ export async function parseDescription(page: Page): Promise<string | null> {
       return text;
     }
 
-    const container = document.querySelector(".wpem-single-event-body-content");
+    const container = document.querySelector(".shortDesc");
 
     if (!container) {
       return "";
@@ -101,42 +101,6 @@ export function parseTimes(startTimeStr: string[], endTimeStr: string[]) {
 
     return date;
   });
-
-//   // Regular Expression to capture the event name after /calendar/
-//   // It will not match if there's only /calendar with nothing after
-//   const eventNameRegex = /^\/event\/(.+)$/;
-
-//   // Apply the regex and return the captured group if matched, otherwise null
-//   const match = pathname.match(eventNameRegex);
-//   return match ? match[1] : null;
-// }
-
-export async function parseDates(page: Page) {
-  const element = await page.$$eval(
-    ".wpem-event-date-time",
-    (el) => el[0].outerHTML,
-  );
-
-  const htmlContent = element;
-
-  // Regular expression pattern to match date and time
-  const dateTimeRegex = /(\d{4}-\d{2}-\d{2})\s+@\s+(\d{2}:\d{2}\s+[AP]M)/g;
-
-  // Array to store matched dates and times
-  const matches = [];
-
-  // Match dates and times in the HTML content
-  let match;
-  while ((match = dateTimeRegex.exec(htmlContent)) !== null) {
-    matches.push({
-      date: match[1],
-      time: match[2],
-    });
-  }
-
-  // Convert matched dates and times to Date objects
-  const startTime = new Date(matches[0].date + " " + matches[0].time);
-  const endTime = new Date(matches[1].date + " " + matches[1].time);
 
   return {
     startTime,
@@ -202,5 +166,4 @@ export const sanitizeUsername = (artistName: string) => {
   username = username.replace(/[^a-z0-9_]/g, "");
 
   return username;
-  };
-}
+};

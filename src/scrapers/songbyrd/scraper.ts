@@ -7,9 +7,16 @@ import {
   notifyOnScrapeSuccess,
   notifyScapeStart,
 } from "../../utils/notifications";
+import {
+  getEventNameFromUrl,
+  parseArtists,
+  parseTicketPrice,
+  parseDescription,
+  //parseTimes,
+} from "./parsing";
 import { config } from "./config";
 import { configDotenv } from "dotenv";
-// import { v4 as uuidv4 } from "uuid";
+import { v4 as uuidv4 } from "uuid";
 import { initScrape } from "../../utils/startup";
 import { getEventNameFromUrl, parseDates } from "./parsing";
 
@@ -25,15 +32,84 @@ async function scrapeEvent(
   }
 
   console.log("[+] scraping event:", eventName);
+
   const page = await browser.newPage();
+  // page.on('console', async (msg) => {
+  //     const msgArgs = msg.args();
+  //     for (let i = 0; i < msgArgs.length; ++i) {
+  //         const val = await msgArgs[i].jsonValue();
+  //         console.log(`[PAGE] ${val}`);
+  //     }
+  // });
+
+  // Navigate the page to a URL
   await page.goto(eventUrl);
+
+  // Set screen size
   await page.setViewport({ width: 1080, height: 1024 });
 
-  const { startTime, endTime } = await parseDates(page);
-  console.log({ startTime, endTime });
+  const element = await page.waitForSelector(".wpem-heading-text");
 
-  return null;
+  if (!element) {
+    console.log("[-] element not found");
+    return null;
+  }
+
+  const title = (
+    (await page.evaluate((element) => element.textContent, element)) ?? ""
+  ).trim();
+  const description = (await parseDescription(page)) ?? "";
+
+  // null if price string is empty
+  const priceContainer = await page.waitForSelector(".wpem-event-details");
+
+  if (!priceContainer) {
+    console.log("[-] price not found");
+    return null;
+  }
+
+  const priceText = (
+    (await page.evaluate(
+      (priceContainer) => priceContainer.textContent,
+      priceContainer,
+    )) ?? ""
+  ).trim();
+
+  const [ticketPrice, doorPrice] = parseTicketPrice(priceText);
+  const { startTime, endTime } = await parseDates(page);
+
+  /*
+  if (!startTimeStr || !endTimeStr) {
+    console.log("[-] start or end time not found");
+    return null;
+  }
+ 
+  const { startTime, endTime } = parseTimes(startTimeStr, endTimeStr);
+  if (!startTime || !endTime) {
+    console.log(`[-] start or end time not found [${startTime}, ${endTime}]`);
+    return null;
+  }
+  */
+
+  const artists = await parseArtists(title);
+
+  const id = uuidv4();
+
+  return {
+    id,
+    url: eventUrl,
+    isMusicEvent: true,
+    title,
+    description,
+    ticketPrice: ticketPrice ?? null,
+    doorPrice: doorPrice ? doorPrice : ticketPrice ?? null,
+    artists,
+    startTime,
+    endTime,
+    flierUrl: null,
+  };
 }
+
 
 export async function scrape({ online }: { online: boolean }): Promise<void> {
   console.log(`[+] scraping [online: ${online}]`);
