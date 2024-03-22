@@ -11,12 +11,27 @@ import { config } from "./config";
 import { configDotenv } from "dotenv";
 // import { v4 as uuidv4 } from "uuid";
 import { initScrape } from "../../utils/startup";
+import { getEventNameFromUrl, parseDates } from "./parsing";
 
 async function scrapeEvent(
   browser: Browser,
   eventUrl: string,
 ): Promise<ScrapedEventData | null> {
-  console.log({ browser, eventUrl });
+  const eventName = getEventNameFromUrl(eventUrl);
+
+  if (!eventName) {
+    console.log("[-] event name not found: ", eventUrl);
+    return null;
+  }
+
+  console.log("[+] scraping event:", eventName);
+  const page = await browser.newPage();
+  await page.goto(eventUrl);
+  await page.setViewport({ width: 1080, height: 1024 });
+
+  const { startTime, endTime } = await parseDates(page);
+  console.log({ startTime, endTime });
+
   return null;
 }
 
