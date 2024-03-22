@@ -18,6 +18,7 @@ import { config } from "./config";
 import { configDotenv } from "dotenv";
 import { v4 as uuidv4 } from "uuid";
 import { initScrape } from "../../utils/startup";
+import { getEventNameFromUrl, parseDates } from "./parsing";
 
 async function scrapeEvent(
   browser: Browser,
@@ -75,9 +76,8 @@ async function scrapeEvent(
   ).trim();
 
   const [ticketPrice, doorPrice] = parseTicketPrice(priceText);
+  const { startTime, endTime } = await parseDates(page);
 
-  const startTime = new Date();
-  const endTime = new Date();
   /*
   if (!startTimeStr || !endTimeStr) {
     console.log("[-] start or end time not found");
