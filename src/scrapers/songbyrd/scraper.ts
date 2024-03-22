@@ -12,13 +12,12 @@ import {
   parseArtists,
   parseTicketPrice,
   parseDescription,
-  //parseTimes,
+  parseDates,
 } from "./parsing";
 import { config } from "./config";
 import { configDotenv } from "dotenv";
 import { v4 as uuidv4 } from "uuid";
 import { initScrape } from "../../utils/startup";
-import { getEventNameFromUrl, parseDates } from "./parsing";
 
 async function scrapeEvent(
   browser: Browser,
@@ -34,18 +33,7 @@ async function scrapeEvent(
   console.log("[+] scraping event:", eventName);
 
   const page = await browser.newPage();
-  // page.on('console', async (msg) => {
-  //     const msgArgs = msg.args();
-  //     for (let i = 0; i < msgArgs.length; ++i) {
-  //         const val = await msgArgs[i].jsonValue();
-  //         console.log(`[PAGE] ${val}`);
-  //     }
-  // });
-
-  // Navigate the page to a URL
   await page.goto(eventUrl);
-
-  // Set screen size
   await page.setViewport({ width: 1080, height: 1024 });
 
   const element = await page.waitForSelector(".wpem-heading-text");
@@ -78,19 +66,6 @@ async function scrapeEvent(
   const [ticketPrice, doorPrice] = parseTicketPrice(priceText);
   const { startTime, endTime } = await parseDates(page);
 
-  /*
-  if (!startTimeStr || !endTimeStr) {
-    console.log("[-] start or end time not found");
-    return null;
-  }
- 
-  const { startTime, endTime } = parseTimes(startTimeStr, endTimeStr);
-  if (!startTime || !endTime) {
-    console.log(`[-] start or end time not found [${startTime}, ${endTime}]`);
-    return null;
-  }
-  */
-
   const artists = await parseArtists(title);
 
   const id = uuidv4();
@@ -109,7 +84,6 @@ async function scrapeEvent(
     flierUrl: null,
   };
 }
-
 
 export async function scrape({ online }: { online: boolean }): Promise<void> {
   console.log(`[+] scraping [online: ${online}]`);
