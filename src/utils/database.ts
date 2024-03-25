@@ -10,10 +10,9 @@ import type {
   ScraperMetadata,
   Location,
 } from "../types";
-import { auth, db, storage } from "../firebase";
+import { auth, bucket, db } from "../firebase";
 import { sanitizeUsername } from "../utils/sanitize";
 import { chatGpt } from "../utils/ai";
-import { getDownloadURL } from "firebase-admin/storage";
 
 export const usersRef = db.collection("users");
 export const bookingsRef = db.collection("bookings");
@@ -375,16 +374,16 @@ export async function convertToSignedUrl({
 
   const buf = await imageRes.buffer();
 
-  const fileRef = storage
-    .bucket("in-the-loop-306520.appspot.com")
-    .file(`bookings/${filename}`);
-
+  const fileRef = bucket.file(`bookings/${filename}`);
   await fileRef.save(buf, {
     contentType: `image/${extension}`,
   });
 
-  const downloadURL = await getDownloadURL(fileRef);
-  console.log({ downloadURL });
+  const res = await fileRef.getSignedUrl({
+    action: "read",
+    expires: "03-09-2491",
+  });
+  const downloadURL = res[0];
 
   return downloadURL;
 }

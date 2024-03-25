@@ -27,6 +27,7 @@ const fcm = getMessaging(app);
 const storage = getStorage(app);
 
 export const projectId = app.options.projectId;
+export const bucket = storage.bucket(`${projectId}.appspot.com`);
 
 export const openaiApiKey = process.env["OPENAI_API_KEY"] ?? "";
 export const slackWebhookUrl = process.env["SLACK_WEBHOOK_URL"] ?? "";

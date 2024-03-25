@@ -226,7 +226,7 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
         }
 
         console.log(
-          `[+] \n- ${data.title}\n - ${data.artists.join(",")}\n - [${data.startTime.toLocaleString()} - ${data.endTime.toLocaleString()}]\n- ${data.flierUrl}`,
+          `[+] \n- ${data.title}\n - ${data.artists.join(",")}\n- ${data.ticketPrice}\n- [${data.startTime.toLocaleString()} - ${data.endTime.toLocaleString()}]\n- ${data.flierUrl}`,
         );
         if (online) {
           await saveScrapeResult(metadata, runId, data);
@@ -262,5 +262,5 @@ if (require.main === module) {
     path: ".env",
   });
 
-  scrape({ online: false });
+  scrape({ online: true });
 }

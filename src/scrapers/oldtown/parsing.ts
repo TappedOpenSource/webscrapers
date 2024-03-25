@@ -141,14 +141,14 @@ export async function parseArtists(title: string): Promise<string[]> {
     .pipe(parser);
 
   const systemMsg = new SystemMessage(`
-    can you parse this string into an array with the names of all the musicians.
+    your job it to extract the names of the musicians from the title of an event.
     the website this was copied from uses all kind of delimiters such as "&" "W." "w/", "W/" or ","
-    but also longer natural language delimiters like "with support from".
+    but also longer natural language delimiters like "with support from", "wth special guest", etc. Don't include these delimiters in the names.
     The band names are unique so don't include names that might describe the event or location like "Nights" or "OTP".
     `);
   const msg = new HumanMessage(`
-                    the string: "${title}"
-                `);
+      the event title: "${title}"
+  `);
   const res = (await runnable.invoke([systemMsg, msg])) as {
     artistNames?: string[];
   };
