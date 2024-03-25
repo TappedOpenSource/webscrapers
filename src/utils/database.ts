@@ -1,5 +1,6 @@
 import { Timestamp } from "firebase-admin/firestore";
 import { v4 as uuidv4 } from "uuid";
+import fetch from "node-fetch";
 import type {
   UserModel,
   Option,
@@ -9,9 +10,10 @@ import type {
   ScraperMetadata,
   Location,
 } from "../types";
-import { auth, db } from "../firebase";
+import { auth, db, storage } from "../firebase";
 import { sanitizeUsername } from "../utils/sanitize";
 import { chatGpt } from "../utils/ai";
+import { getDownloadURL } from "firebase-admin/storage";
 
 export const usersRef = db.collection("users");
 export const bookingsRef = db.collection("bookings");
@@ -234,6 +236,11 @@ export async function createBookingsFromEvent(
       return;
     }
 
+    const signedFlierUrl =
+      data.flierUrl !== null
+        ? await convertToSignedUrl({ url: data.flierUrl })
+        : null;
+
     const booking: Booking = {
       location,
       scraperInfo: {
@@ -251,7 +258,7 @@ export async function createBookingsFromEvent(
       startTime: Timestamp.fromDate(data.startTime),
       endTime: Timestamp.fromDate(data.endTime),
       timestamp: Timestamp.now(),
-      flierUrl: data.flierUrl,
+      flierUrl: signedFlierUrl,
       eventUrl: data.url,
       genres: [],
     };
@@ -356,3 +363,28 @@ export const createReviewsForBooking = async ({
       .set(bookerReview),
   ]);
 };
+
+export async function convertToSignedUrl({
+  url,
+}: {
+  url: string;
+}): Promise<string | null> {
+  const filename = url.split("/").pop() ?? "flier.jpg";
+  const extension = filename.split(".").pop();
+  const imageRes = await fetch(url);
+
+  const buf = await imageRes.buffer();
+
+  const fileRef = storage
+    .bucket("in-the-loop-306520.appspot.com")
+    .file(`bookings/${filename}`);
+
+  await fileRef.save(buf, {
+    contentType: `image/${extension}`,
+  });
+
+  const downloadURL = await getDownloadURL(fileRef);
+  console.log({ downloadURL });
+
+  return downloadURL;
+}
