@@ -388,3 +388,30 @@ export async function convertToSignedUrl({
 
   return downloadURL;
 }
+
+export async function getTopPerformersByVenueId(
+  venueId: string,
+): Promise<string[]> {
+  const venueBookingsSnap = await bookingsRef
+    .where("requesterId", "==", venueId)
+    .get();
+
+  const venueBookings = venueBookingsSnap.docs.map((doc) => doc.data());
+
+  const performerBookings: { [performerId: string]: number } = {};
+  for (const booking of venueBookings) {
+    const performerId = booking.requesteeId;
+    if (performerId in performerBookings) {
+      performerBookings[performerId] += 1;
+    } else {
+      performerBookings[performerId] = 1;
+    }
+  }
+
+  const topPerformers = Object.entries(performerBookings)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([performerId]) => performerId);
+
+  return topPerformers;
+}
