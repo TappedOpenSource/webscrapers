@@ -14,6 +14,7 @@
     "scrape:ember": "npm run build && node dist/scrapers/ember/scraper.js",
     "scrape:wonderville": "npm run build && node dist/scrapers/wonderville/scraper.js",
     "scrape:comet-old": "npm run build && node dist/scrapers/comet-old/scraper.js",
+    "scrape:bmp": "npm run build && node dist/scrapers/brooklyn-made-productions/scraper.js",
     "dev": "nodemon --watch 'src/**/*.ts' src/server.ts",
     "start": "node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
