@@ -1,22 +1,22 @@
-import type { Browser } from "puppeteer";
+import type { Browser, Page } from "puppeteer";
 import puppeteer from "puppeteer";
 import Sitemapper from "sitemapper";
-import { metadata } from "./config";
+import { config } from "./config";
 import { ScrapedEventData } from "../../types";
 import { v4 as uuidv4 } from "uuid";
 import {
   endScrapeRun,
-  getLatestRun,
   saveScrapeResult,
-  startScrapeRun,
 } from "../../utils/database";
 import {
   notifyOnScrapeFailure,
   notifyOnScrapeSuccess,
 } from "../../utils/notifications";
 import { configDotenv } from "dotenv";
+import { initScrape } from "../../utils/startup";
 
-async function getArtists(page: puppeteer.Page): Promise<string[]> {
+
+async function getArtists(page: Page): Promise<string[]> {
   const artistElements = await page.$$eval(
     ".tribe-events-single-event-title",
     (elements) => elements.map((el) => el.textContent?.trim() ?? "")
@@ -24,7 +24,7 @@ async function getArtists(page: puppeteer.Page): Promise<string[]> {
   return artistElements;
 }
 
-async function getDate(page: puppeteer.Page): Promise<string[]> {
+async function getDate(page: Page): Promise<string[]> {
   const dateElements = await page.$$eval(
     ".tribe-event-date-start",
     (elements) => elements.map((el) => el.textContent?.trim() ?? "")
@@ -32,7 +32,7 @@ async function getDate(page: puppeteer.Page): Promise<string[]> {
   return dateElements;
 }
 
-async function getTime(page: puppeteer.Page): Promise<string[]> {
+async function getTime(page: Page): Promise<string[]> {
   const timeElements = await page.$$eval(
     ".tribe-events-schedule h3",
     (elements) => elements.map((el) => el.textContent?.trim() ?? "")
@@ -76,14 +76,13 @@ async function scrapeEvent(
 
 export async function scrape({ online }: { online: boolean }): Promise<void> {
   console.log(`[+] scraping [online: ${online}]`);
-  const latestRun = await getLatestRun(metadata);
-  const runId = online ? await startScrapeRun(metadata) : "test-run";
+  const { latestRun, runId, metadata } = await initScrape({ online, config });
 
   try {
     const lateRunStart = latestRun?.startTime ?? null;
     const lastmod = lateRunStart?.getTime();
     const sitemap = new Sitemapper({
-      url: metadata.sitemap,
+      url: config.sitemap,
       lastmod,
       timeout: 30000,
     });
