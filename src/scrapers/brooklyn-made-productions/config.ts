@@ -7,4 +7,3 @@ export const config: ScraperConfig = {
   sitemap: "https://brooklynmadepresents.com/sitemap_index.xml",
   city: "New York City, N.Y.",
 };
-

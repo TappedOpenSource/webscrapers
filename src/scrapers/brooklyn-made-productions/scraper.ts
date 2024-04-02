@@ -1,76 +1,57 @@
-import type { Browser, Page } from "puppeteer";
+import type { Browser } from "puppeteer";
 import puppeteer from "puppeteer";
 import Sitemapper from "sitemapper";
 import { config } from "./config";
 import { ScrapedEventData } from "../../types";
 import { v4 as uuidv4 } from "uuid";
-import {
-  endScrapeRun,
-  saveScrapeResult,
-} from "../../utils/database";
+import { endScrapeRun, saveScrapeResult } from "../../utils/database";
 import {
   notifyOnScrapeFailure,
   notifyOnScrapeSuccess,
 } from "../../utils/notifications";
 import { configDotenv } from "dotenv";
 import { initScrape } from "../../utils/startup";
-
-
-async function getArtists(page: Page): Promise<string[]> {
-  const artistElements = await page.$$eval(
-    ".tribe-events-single-event-title",
-    (elements) => elements.map((el) => el.textContent?.trim() ?? "")
-  );
-  return artistElements;
-}
-
-async function getDate(page: Page): Promise<string[]> {
-  const dateElements = await page.$$eval(
-    ".tribe-event-date-start",
-    (elements) => elements.map((el) => el.textContent?.trim() ?? "")
-  );
-  return dateElements;
-}
-
-async function getTime(page: Page): Promise<string[]> {
-  const timeElements = await page.$$eval(
-    ".tribe-events-schedule h3",
-    (elements) => elements.map((el) => el.textContent?.trim() ?? "")
-  );
-  return timeElements;
-}
+import { getEventDetails, getEventNameFromUrl, getFlierUrl } from "./parsing";
 
 async function scrapeEvent(
   browser: Browser,
-  url: string
+  url: string,
 ): Promise<ScrapedEventData | null> {
+  const eventName = getEventNameFromUrl(url);
+
+  if (!eventName) {
+    console.log("[-] event name not found: ", url);
+    return null;
+  }
+
+  console.log("[+] scraping event:", eventName);
   const page = await browser.newPage();
   await page.goto(url);
 
-  const eventArtists: string[] = await getArtists(page);
-  const eventDate: string[] = await getDate(page);
-  const eventTime: string[] = await getTime(page);
+  const {
+    title,
+    description,
+    artists,
+    startTime,
+    endTime,
+    doorPrice,
+    ticketPrice,
+  } = await getEventDetails(page);
 
-  // Combine date and time and convert to Date object
-  const combinedDate: string = eventDate.join(" ");
-  const combinedTime: string = eventTime.join(", ");
-  const dateTimeString: string = `${combinedDate} ${combinedTime}`;
-  const dateTime: Date = new Date(dateTimeString);
-
+  const flierUrl = await getFlierUrl(page);
   const id = uuidv4();
-
   return {
     id,
     url,
     isMusicEvent: true,
-    title: eventArtists.join(", "),
-    description: "",
-    ticketPrice: null,
-    doorPrice: null,
-    artists: eventArtists,
-    startTime: dateTime,
-    endTime: dateTime,
-    flierUrl: null,
+    title,
+    description,
+    ticketPrice,
+    doorPrice,
+    artists,
+    startTime,
+    endTime,
+    flierUrl,
   };
 }
 
@@ -102,6 +83,10 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
           console.log("[-] failed to scrape data");
           continue;
         }
+
+        console.log(
+          `[+] \n-url: ${url}\n- title: ${data.title}\n - performers: ${data.artists.join(",")}\n- ticket price: (${data.doorPrice}, ${data.ticketPrice})\n- times: [${data.startTime.toLocaleString()} - ${data.endTime.toLocaleString()}]\n- ${data.flierUrl}`,
+        );
 
         if (online) {
           await saveScrapeResult(metadata, runId, data);

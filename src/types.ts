@@ -31,8 +31,8 @@ export type ScrapedEventData = {
   id: string;
   isMusicEvent: boolean;
   url: string;
-  title: string;
-  description: string;
+  title: Option<string>;
+  description: Option<string>;
   artists: string[];
   ticketPrice: Option<number>;
   doorPrice: Option<number>;
