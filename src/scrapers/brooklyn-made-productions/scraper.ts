@@ -49,8 +49,8 @@ async function scrapeEvent(
     ticketPrice,
     doorPrice,
     artists,
-    startTime,
-    endTime,
+    startTime: startTime ?? new Date(),
+    endTime: endTime ?? new Date(),
     flierUrl,
   };
 }
@@ -122,5 +122,5 @@ if (require.main === module) {
     path: ".env",
   });
 
-  scrape({ online: false });
+  scrape({ online: true });
 }

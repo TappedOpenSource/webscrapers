@@ -17,8 +17,8 @@ export function getEventNameFromUrl(url: string) {
 
 export async function getEventDetails(page: Page): Promise<{
   artists: string[];
-  startTime: Date;
-  endTime: Date;
+  startTime: Date | null;
+  endTime: Date | null;
   doorPrice: number | null;
   ticketPrice: number | null;
   title: string | null;
@@ -48,8 +48,8 @@ async function parseDetails(
   details: string | null,
 ): Promise<{
   artists: string[];
-  startTime: Date;
-  endTime: Date;
+  startTime: Date | null;
+  endTime: Date | null;
   doorPrice: number | null;
   ticketPrice: number | null;
 }> {
@@ -129,8 +129,8 @@ async function parseDetails(
 
   // console.log({ sum: event.summary, res });
   const artists = res.artistNames ?? [];
-  const startTime = new Date(res.startTime ?? "");
-  const endTime = new Date(res.endTime ?? "");
+  const startTime = res.startTime ? new Date(res.startTime) : null;
+  const endTime = res.endTime ? new Date(res.endTime) : null;
   const doorPrice = res.doorPrice ?? null;
   const ticketPrice = res.ticketPrice ?? null;
 
