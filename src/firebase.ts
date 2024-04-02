@@ -18,7 +18,7 @@ const credential = production
   : cert(require("../credentials.json"));
 
 const app = initializeApp({
-  projectId: "in-the-loop-306520",
+  projectId: "tappd-webscraping",
   credential,
 });
 const auth = getAuth(app);
