@@ -7,11 +7,11 @@ export function getEventNameFromUrl(url: string) {
   const pathname = new URL(url).pathname;
 
   // Exclude private events from bookings
-  
+
   if (pathname.includes("private")) {
-    return null; 
+    return null;
   }
-  
+
   // Regular Expression to capture the event name after /events/
   // It will not match if there's only /events with nothing after
   const eventNameRegex = /\/events\/(.+)$/;
@@ -75,8 +75,7 @@ export async function parseDescription(page: Page): Promise<string | null> {
 // }
 
 export async function parseDates(page: Page) {
-
-  const dateText =  await page.evaluate(() => {
+  const dateText = await page.evaluate(() => {
     function getTextContent(element: Element | ChildNode) {
       let text = "";
 
@@ -91,9 +90,10 @@ export async function parseDates(page: Page) {
 
       return text;
     }
-    
 
-    const container = document.querySelector(".eventitem-meta.event-meta.event-meta-date-time-container");
+    const container = document.querySelector(
+      ".eventitem-meta.event-meta.event-meta-date-time-container",
+    );
 
     if (!container) {
       return "";
@@ -104,11 +104,8 @@ export async function parseDates(page: Page) {
   //console.log(dateText)
 
   // Regular expression pattern to match date and time
-  const dateTimeRegex = /(\w+),\s+(\w+)\s+(\d{1,2}),\s+(\d{4})\s+(\d{1,2}:\d{2}\s+(?:AM|PM))\s*(?:-|to)?\s*(\d{1,2}:\d{2}\s*(?:AM|PM))?(?:.*?(\w+),\s+(\w+)\s+(\d{1,2}),\s+(\d{4})\s+(\d{1,2}:\d{2}\s+(?:AM|PM)))?/gms
-
-
-
-
+  const dateTimeRegex =
+    /(\w+),\s+(\w+)\s+(\d{1,2}),\s+(\d{4})\s+(\d{1,2}:\d{2}\s+(?:AM|PM))\s*(?:-|to)?\s*(\d{1,2}:\d{2}\s*(?:AM|PM))?(?:.*?(\w+),\s+(\w+)\s+(\d{1,2}),\s+(\d{4})\s+(\d{1,2}:\d{2}\s+(?:AM|PM)))?/gms;
 
   // Array to store matched dates and times
   const matches = [];
@@ -118,17 +115,19 @@ export async function parseDates(page: Page) {
   while ((match = dateTimeRegex.exec(dateText)) !== null) {
     if (match[7]) {
       matches.push({
-        startDateTime: match[2] + " " + match[3] + " " + match[4] +  " " + match[5],
-        endDateTime: match[8] + " " + match[9] + " " + match[10] +  " " + match[11],
-      })
+        startDateTime:
+          match[2] + " " + match[3] + " " + match[4] + " " + match[5],
+        endDateTime:
+          match[8] + " " + match[9] + " " + match[10] + " " + match[11],
+      });
     } else {
       matches.push({
-        startDateTime: match[2] + " " + match[3] + " " + match[4] +  " " + match[5],
-        endDateTime: match[2] + " " + match[3] + " " + match[4] +  " " + match[6],
+        startDateTime:
+          match[2] + " " + match[3] + " " + match[4] + " " + match[5],
+        endDateTime:
+          match[2] + " " + match[3] + " " + match[4] + " " + match[6],
       });
     }
-    
-
   }
   // Convert matched dates and times to Date objects
   const startTime = new Date(matches[0].startDateTime);
@@ -143,7 +142,7 @@ export async function parseDates(page: Page) {
 export async function parseArtists(
   title: string,
   description: string,
-): Promise<string[]> {
+): Promise<{ artists: string[]; isMusicEvent: boolean }> {
   const parser = new JsonOutputFunctionsParser();
   const extractionFunctionSchema = {
     name: "extractor",
@@ -157,10 +156,14 @@ export async function parseArtists(
             type: "string",
           },
           description:
-            "The musicians listed in the title of this event or an empty array if none are found.",
+            "The performers for this event or an empty array if there aren't any",
+        },
+        isMusicEvent: {
+          type: "boolean",
+          description: "Whether the event is a music event or not.",
         },
       },
-      required: ["artistNames"],
+      required: ["artistNames", "isMusicEvent"],
     },
   };
 
@@ -175,22 +178,24 @@ export async function parseArtists(
     .pipe(parser);
 
   const systemMsg = new SystemMessage(`
-    your job is to extract the artist names from the title and description of an event.'
-    The band names are unique so don't include names that might describe the event or location like "Nighthorse", "Bar", "Karaoke", "Mingle", "SOLD OUT", etc".
-    if you find that the title describes an event more so than an artists, please return an empty list for the list of artists.
+    your job is to extract information about an event at the nightclub "Nighthorse" from the title and description'
+    None of these are performers names "Nighthorse", "Bar", "Karaoke", "Mingle", "SOLD OUT", Open Mic, etc".
+    if you find that the event doesn't to be an event related to music (e.g. a comedy show), set the isMusicEvent to false.'
     `);
   const msg = new HumanMessage(`
                     the title: "${title}"
-
                     the description: "${description}"
                 `);
   const res = (await runnable.invoke([systemMsg, msg])) as {
     artistNames?: string[];
+    isMusicEvent?: boolean;
   };
 
   // console.log({ sum: event.summary, res });
   const artistNames = res.artistNames ?? [];
-  return artistNames;
+  const isMusicEvent = res.isMusicEvent ?? false;
+
+  return { artists: artistNames, isMusicEvent };
 }
 
 export const sanitizeUsername = (artistName: string) => {

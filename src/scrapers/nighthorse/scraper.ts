@@ -39,8 +39,6 @@ async function scrapeEvent(
 
   const element = await page.waitForSelector(".eventitem-title");
 
-  
-
   if (!element) {
     console.log("[-] element not found");
     return null;
@@ -53,7 +51,9 @@ async function scrapeEvent(
   const description = (await parseDescription(page)) ?? "";
 
   // null if price string is empty
-  const priceContainer = await page.waitForSelector(".eventitem-column-content");
+  const priceContainer = await page.waitForSelector(
+    ".eventitem-column-content",
+  );
   if (!priceContainer) {
     console.log("[-] price not found");
     return null;
@@ -69,7 +69,7 @@ async function scrapeEvent(
   const [ticketPrice, doorPrice] = parseTicketPrice(priceText);
   const { startTime, endTime } = await parseDates(page);
 
-  const artists = await parseArtists(title, description);
+  const { isMusicEvent, artists } = await parseArtists(title, description);
   const flierUrl = await getFlierUrl(page);
 
   const id = uuidv4();
@@ -77,7 +77,7 @@ async function scrapeEvent(
   return {
     id,
     url: eventUrl,
-    isMusicEvent: true,
+    isMusicEvent,
     title,
     description,
     ticketPrice: ticketPrice ?? null,
@@ -105,7 +105,7 @@ export async function scrape({ online }: { online: boolean }): Promise<void> {
     });
 
     const { sites } = await sitemap.fetch();
-  
+
     console.log("[+] urls:", sites.length);
     await notifyScapeStart({
       runId,
@@ -162,5 +162,5 @@ if (require.main === module) {
     path: ".env",
   });
 
-  scrape({ online: true });
+  scrape({ online: false });
 }
