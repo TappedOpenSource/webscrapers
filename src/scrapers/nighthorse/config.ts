@@ -1,7 +1,7 @@
 import { ScraperConfig } from "../../types";
 
 export const config: ScraperConfig = {
-  id: "oH56wniKfvYa95OWTf5WANOxAbj2",
+  id: "l8957fA5KIXYIUv31RZGXoF1NI33",
   name: "nighthorse",
   url: "https://www.nighthorsebk.com",
   sitemap: "https://www.nighthorsebk.com/sitemap.xml",

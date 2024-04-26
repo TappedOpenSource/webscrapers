@@ -114,6 +114,7 @@ export type VenueInfo = {
   monitors?: Option<string>;
   microphones?: Option<string>;
   lights?: Option<string>;
+  topPerformerIds: string[];
 };
 
 export type EmailNotifications = {

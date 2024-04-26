@@ -12,11 +12,11 @@ import type {
 } from "../types";
 import { auth, bucket, db } from "../firebase";
 import { sanitizeUsername } from "../utils/sanitize";
-import { chatGpt } from "../utils/ai";
+// import { chatGpt } from "../utils/ai";
 
 export const usersRef = db.collection("users");
 export const bookingsRef = db.collection("bookings");
-const reviewsRef = db.collection("reviews");
+// const reviewsRef = db.collection("reviews");
 export const rawScrappingRef = db.collection("rawScrapeData");
 export const tokensRef = db.collection("tokens");
 
@@ -75,6 +75,16 @@ export async function endScrapeRun(
       endTime: Timestamp.now(),
       error: error,
     });
+
+  const topPerformerIds = await getTopPerformersByVenueId(scraper.venue.id);
+  await usersRef.doc(scraper.venue.id).set(
+    {
+      venueInfo: {
+        topPerformerIds,
+      },
+    },
+    { merge: true },
+  );
 }
 
 export async function saveScrapeResult(
@@ -265,103 +275,103 @@ export async function createBookingsFromEvent(
     await bookingsRef.doc(booking.id).set(booking);
     console.log(`[+] created booking: ${booking.name}`);
 
-    const bookingStartTime = booking.startTime.toDate();
-    if (bookingStartTime.getTime() < Date.now()) {
-      console.log(`[+] creating reviews for booking: ${booking.name}`);
-      await createReviewsForBooking({
-        bookingId: booking.id,
-        bookerId: booking.requesterId,
-        performerId: booking.requesteeId,
-      });
-    }
+    // const bookingStartTime = booking.startTime.toDate();
+    // if (bookingStartTime.getTime() < Date.now()) {
+    //   console.log(`[+] creating reviews for booking: ${booking.name}`);
+    //   await createReviewsForBooking({
+    //     bookingId: booking.id,
+    //     bookerId: booking.requesterId,
+    //     performerId: booking.requesteeId,
+    //   });
+    // }
   });
 }
 
-export const createReviewsForBooking = async ({
-  bookingId,
-  performerId,
-  bookerId,
-}: {
-  bookingId: string;
-  performerId: string;
-  bookerId: string;
-}) => {
-  const performerSnap = await usersRef.doc(performerId).get();
-  if (!performerSnap.exists) {
-    console.error(`performer does not exist: ${performerId}`);
-    return;
-  }
-  const performer = performerSnap.data()!;
-  const performerName = performer.artistName ?? performer.username;
+// export const createReviewsForBooking = async ({
+//   bookingId,
+//   performerId,
+//   bookerId,
+// }: {
+//   bookingId: string;
+//   performerId: string;
+//   bookerId: string;
+// }) => {
+//   const performerSnap = await usersRef.doc(performerId).get();
+//   if (!performerSnap.exists) {
+//     console.error(`performer does not exist: ${performerId}`);
+//     return;
+//   }
+//   const performer = performerSnap.data()!;
+//   const performerName = performer.artistName ?? performer.username;
 
-  const bookerSnap = await usersRef.doc(bookerId).get();
-  if (!bookerSnap.exists) {
-    console.error(`booker does not exist: ${bookerId}`);
-    return;
-  }
-  const booker = bookerSnap.data()!;
-  const bookerName = booker.artistName ?? booker.username;
+//   const bookerSnap = await usersRef.doc(bookerId).get();
+//   if (!bookerSnap.exists) {
+//     console.error(`booker does not exist: ${bookerId}`);
+//     return;
+//   }
+//   const booker = bookerSnap.data()!;
+//   const bookerName = booker.artistName ?? booker.username;
 
-  const performerReviewText = await chatGpt(
-    `imagine you're a venue that just recently booked a musician, named ${performerName} to perform at your venue. you want to leave a very positive review for the musician. what would you say in one or two sentences?`,
-    { temperature: 0.4, model: "gpt-3.5-turbo" },
-  );
-  const bookerReviewText = await chatGpt(
-    `image you're a musician who just recently performed at a venue, called ${bookerName}. you want to leave a very positive review for the venue. what would you say in one or two sentences?`,
-    { temperature: 0.4, model: "gpt-3.5-turbo" },
-  );
-  const performerReview: {
-    id: string;
-    bookerId: string;
-    performerId: string;
-    bookingId: string;
-    timestamp: Timestamp;
-    overallRating: number;
-    overallReview: string;
-    type: "performer";
-  } = {
-    id: uuidv4(),
-    bookingId,
-    performerId,
-    bookerId,
-    overallRating: 5,
-    overallReview: performerReviewText,
-    timestamp: Timestamp.now(),
-    type: "performer",
-  };
-  const bookerReview: {
-    id: string;
-    bookerId: string;
-    performerId: string;
-    bookingId: string;
-    timestamp: Timestamp;
-    overallRating: number;
-    overallReview: string;
-    type: "booker";
-  } = {
-    id: uuidv4(),
-    bookingId,
-    performerId,
-    bookerId,
-    overallRating: 5,
-    overallReview: bookerReviewText,
-    timestamp: Timestamp.now(),
-    type: "booker",
-  };
+//   const performerReviewText = await chatGpt(
+//     `imagine you're a venue that just recently booked a musician, named ${performerName} to perform at your venue. you want to leave a very positive review for the musician. what would you say in one or two sentences?`,
+//     { temperature: 0.4, model: "gpt-3.5-turbo" },
+//   );
+//   const bookerReviewText = await chatGpt(
+//     `image you're a musician who just recently performed at a venue, called ${bookerName}. you want to leave a very positive review for the venue. what would you say in one or two sentences?`,
+//     { temperature: 0.4, model: "gpt-3.5-turbo" },
+//   );
+//   const performerReview: {
+//     id: string;
+//     bookerId: string;
+//     performerId: string;
+//     bookingId: string;
+//     timestamp: Timestamp;
+//     overallRating: number;
+//     overallReview: string;
+//     type: "performer";
+//   } = {
+//     id: uuidv4(),
+//     bookingId,
+//     performerId,
+//     bookerId,
+//     overallRating: 5,
+//     overallReview: performerReviewText,
+//     timestamp: Timestamp.now(),
+//     type: "performer",
+//   };
+//   const bookerReview: {
+//     id: string;
+//     bookerId: string;
+//     performerId: string;
+//     bookingId: string;
+//     timestamp: Timestamp;
+//     overallRating: number;
+//     overallReview: string;
+//     type: "booker";
+//   } = {
+//     id: uuidv4(),
+//     bookingId,
+//     performerId,
+//     bookerId,
+//     overallRating: 5,
+//     overallReview: bookerReviewText,
+//     timestamp: Timestamp.now(),
+//     type: "booker",
+//   };
 
-  await Promise.all([
-    reviewsRef
-      .doc(performerId)
-      .collection("performerReviews")
-      .doc(performerReview.id)
-      .set(performerReview),
-    reviewsRef
-      .doc(bookerId)
-      .collection("bookerReviews")
-      .doc(bookerReview.id)
-      .set(bookerReview),
-  ]);
-};
+//   await Promise.all([
+//     reviewsRef
+//       .doc(performerId)
+//       .collection("performerReviews")
+//       .doc(performerReview.id)
+//       .set(performerReview),
+//     reviewsRef
+//       .doc(bookerId)
+//       .collection("bookerReviews")
+//       .doc(bookerReview.id)
+//       .set(bookerReview),
+//   ]);
+// };
 
 export async function convertToSignedUrl({
   url,
@@ -390,6 +400,7 @@ export async function convertToSignedUrl({
 
 export async function getTopPerformersByVenueId(
   venueId: string,
+  count: number = 3,
 ): Promise<string[]> {
   const venueBookingsSnap = await bookingsRef
     .where("requesterId", "==", venueId)
@@ -409,7 +420,7 @@ export async function getTopPerformersByVenueId(
 
   const topPerformers = Object.entries(performerBookings)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
+    .slice(0, count)
     .map(([performerId]) => performerId);
 
   return topPerformers;
