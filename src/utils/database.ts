@@ -423,5 +423,6 @@ export async function getTopPerformersByVenueId(
     .slice(0, count)
     .map(([performerId]) => performerId);
 
+  console.log("[+] calculating top performers for venue");
   return topPerformers;
 }
