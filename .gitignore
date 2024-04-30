@@ -1,6 +1,7 @@
 
 dist/
 credentials.json
+calendar-credentials.json
 .env.local
 .env*
 node_modules/
