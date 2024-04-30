@@ -18,7 +18,7 @@ const credential = production
   : cert(require("../credentials.json"));
 
 const app = initializeApp({
-  projectId: "in-the-loop-306520",
+  projectId: "tappd-webscraping",
   credential,
 });
 const auth = getAuth(app);
@@ -32,5 +32,8 @@ export const bucket = storage.bucket(`${projectId}.appspot.com`);
 export const openaiApiKey = process.env["OPENAI_API_KEY"] ?? "";
 export const slackWebhookUrl = process.env["SLACK_WEBHOOK_URL"] ?? "";
 export const googlePlacesApiKey = process.env["GOOGLE_PLACES_API_KEY"] ?? "";
+export const oauthClientId = process.env["OAUTH_CLIENT_ID"] ?? "";
+export const oauthClientSecret = process.env["OAUTH_CLIENT_SECRET"] ?? "";
+export const redirectUrl = process.env["REDIRECT_URL"] ?? "";
 
 export { auth, db, fcm, storage };
